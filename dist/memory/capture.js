@@ -73,12 +73,14 @@ function sourceRoleMatches(event, actor) {
 export class MemoryCapture {
     onCaptured;
     clock;
+    onError;
     calls = new Map();
     capturedEvents = [];
     sequence = 0;
-    constructor(onCaptured, clock = () => new Date().toISOString()) {
+    constructor(onCaptured, clock = () => new Date().toISOString(), onError) {
         this.onCaptured = onCaptured;
         this.clock = clock;
+        this.onError = onError;
     }
     capture(session, rawEvent) {
         const now = this.clock();
@@ -116,7 +118,12 @@ export class MemoryCapture {
         if (spec.eventType === 'tool_call' && callId)
             this.calls.set(source.sessionId + ':' + callId, event.id);
         this.capturedEvents.push(event);
-        this.onCaptured?.(event);
+        try {
+            this.onCaptured?.(event);
+        }
+        catch (error) {
+            this.onError?.(error);
+        }
         return event;
     }
     handleSessionEvent(session, event) {

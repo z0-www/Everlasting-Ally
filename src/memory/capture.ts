@@ -11,6 +11,7 @@ import type { MemorySource } from './types.js'
 
 export type CaptureClock = () => string
 export type MemoryEventHandler = (event: MemoryEvent) => void
+export type CaptureErrorHandler = (error: unknown) => void
 
 type EventSpec = {
   actor: MemoryActor
@@ -103,6 +104,7 @@ export class MemoryCapture {
   constructor(
     private readonly onCaptured?: MemoryEventHandler,
     private readonly clock: CaptureClock = () => new Date().toISOString(),
+    private readonly onError?: CaptureErrorHandler,
   ) {}
 
   capture(session: SessionLike, rawEvent: SessionEventLike): MemoryEvent | null {
@@ -138,7 +140,11 @@ export class MemoryCapture {
     }
     if (spec.eventType === 'tool_call' && callId) this.calls.set(source.sessionId + ':' + callId, event.id)
     this.capturedEvents.push(event)
-    this.onCaptured?.(event)
+    try {
+      this.onCaptured?.(event)
+    } catch (error) {
+      this.onError?.(error)
+    }
     return event
   }
 

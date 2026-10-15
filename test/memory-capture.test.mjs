@@ -55,18 +55,18 @@ test('marks incomplete known events partial and skips unknown sources', () => {
 test('mounts the DSH session/event listener and cleans up a returned disposer', () => {
   let listener
   let disposed = false
-  let cleanup
+  const cleanups = []
   const root = {
     on(name, callback) {
       assert.equal(name, 'session/event')
       listener = callback
       return () => { disposed = true }
     },
-    effect(setup) { cleanup = setup() }
+    effect(setup) { cleanups.push(setup()) }
   }
   const capture = mountMemoryCapture(root)
   listener({ id: 'session-3' }, { type: 'user/message', seq: 1, content: 'captured' })
   assert.equal(capture.events.length, 1)
-  cleanup()
+  for (const cleanup of cleanups) cleanup?.()
   assert.equal(disposed, true)
 })

@@ -1,8 +1,11 @@
 /** Minimal Everlasting Ally host facet. */
 import { MemoryCapture } from './memory/capture.js'
+import { resolveMemoryConfig } from './memory/config.js'
+import { MemoryStorage, type MemoryStats } from './memory/storage.js'
 import type { SessionEventLike, SessionLike } from './memory/types.js'
 
 type ToolResult = { ok: true; plugin: 'everlasting-ally'; message: string }
+type StatusResult = Omit<MemoryStats, 'lastSuccessfulWriteAt'> & { lastSuccessfulWriteAt: string }
 type ToolContext = {
   tools: {
     register(definition: {
@@ -11,9 +14,9 @@ type ToolContext = {
       parameters: Record<string, unknown>
       output: {
         schema: Record<string, unknown>
-        render(args: unknown, value: ToolResult): Array<Record<string, unknown>>
+        render(args: unknown, value: unknown): Array<Record<string, unknown>>
       }
-      execute(args: unknown): Promise<ToolResult>
+      execute(args: unknown): Promise<unknown>
     }): () => void
   }
   effect(setup: () => (() => void) | void, label?: string): void
@@ -33,20 +36,41 @@ function normalizeMessage(args: unknown): string {
 
 export const name = 'everlasting-ally'
 
-export function mountMemoryCapture(root: HostContext): MemoryCapture {
-  const capture = new MemoryCapture()
-  if (typeof root.on !== 'function') return capture
+export type MemoryRuntime = {
+  capture: MemoryCapture
+  storage: MemoryStorage | null
+}
+
+export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): MemoryRuntime {
+  const config = resolveMemoryConfig(rawConfig)
+  let storage: MemoryStorage | null = null
+  try {
+    storage = new MemoryStorage(config)
+  } catch {
+    storage = null
+  }
+  const capture = new MemoryCapture((event) => {
+    storage?.saveEvent(event)
+  })
+  if (typeof root.on !== 'function') return { capture, storage }
   const dispose = root.on('session/event', (session, event) => {
     capture.handleSessionEvent(session, event)
   })
   if (typeof dispose === 'function' && typeof root.effect === 'function') {
     root.effect(() => dispose, 'everlasting-ally: session event listener')
   }
-  return capture
+  if (storage && typeof root.effect === 'function') {
+    root.effect(() => () => storage?.close(), 'everlasting-ally: memory database')
+  }
+  return { capture, storage }
 }
 
-export function apply(root: HostContext): void {
-  mountMemoryCapture(root)
+export function mountMemoryCapture(root: HostContext, rawConfig?: unknown): MemoryCapture {
+  return mountMemoryRuntime(root, rawConfig).capture
+}
+
+export function apply(root: HostContext, rawConfig?: unknown): void {
+  const runtime = mountMemoryRuntime(root, rawConfig)
   root.inject(['tools'], (ctx) => {
     const unregister = ctx.tools.register({
       name: TOOL_NAME,
@@ -69,6 +93,35 @@ export function apply(root: HostContext): void {
       })
     })
     ctx.effect(() => unregister, 'everlasting-ally: tool registration')
+    const statusUnregister = ctx.tools.register({
+      name: 'inside_memory_status',
+      description: 'Return memory capture status and aggregate counts without returning event content.',
+      parameters: { type: 'object', properties: {}, additionalProperties: false },
+      output: {
+        schema: {
+          type: 'object',
+          properties: {
+            enabled: { type: 'boolean' }, databaseStatus: { type: 'string' },
+            eventCount: { type: 'integer' }, sessionCount: { type: 'integer' },
+            lastSuccessfulWriteAt: { type: 'string' },
+          },
+          required: ['enabled', 'databaseStatus', 'eventCount', 'sessionCount', 'lastSuccessfulWriteAt'],
+          additionalProperties: false,
+        },
+        render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+      },
+      execute: async (): Promise<StatusResult> => {
+        const stats = runtime.storage?.getMemoryStats()
+        return {
+          enabled: stats?.enabled ?? resolveMemoryConfig(rawConfig).enabled,
+          databaseStatus: stats?.databaseStatus ?? 'unavailable',
+          eventCount: stats?.eventCount ?? 0,
+          sessionCount: stats?.sessionCount ?? 0,
+          lastSuccessfulWriteAt: stats?.lastSuccessfulWriteAt ?? '',
+        }
+      },
+    })
+    ctx.effect(() => statusUnregister, 'everlasting-ally: status tool registration')
   })
 }
 export { TOOL_NAME }

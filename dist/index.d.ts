@@ -1,11 +1,7 @@
 /** Minimal Everlasting Ally host facet. */
 import { MemoryCapture } from './memory/capture.js';
+import { MemoryStorage } from './memory/storage.js';
 import type { SessionEventLike, SessionLike } from './memory/types.js';
-type ToolResult = {
-    ok: true;
-    plugin: 'everlasting-ally';
-    message: string;
-};
 type ToolContext = {
     tools: {
         register(definition: {
@@ -14,9 +10,9 @@ type ToolContext = {
             parameters: Record<string, unknown>;
             output: {
                 schema: Record<string, unknown>;
-                render(args: unknown, value: ToolResult): Array<Record<string, unknown>>;
+                render(args: unknown, value: unknown): Array<Record<string, unknown>>;
             };
-            execute(args: unknown): Promise<ToolResult>;
+            execute(args: unknown): Promise<unknown>;
         }): () => void;
     };
     effect(setup: () => (() => void) | void, label?: string): void;
@@ -28,6 +24,11 @@ type HostContext = {
 };
 declare const TOOL_NAME = "inside_memory_ping";
 export declare const name = "everlasting-ally";
-export declare function mountMemoryCapture(root: HostContext): MemoryCapture;
-export declare function apply(root: HostContext): void;
+export type MemoryRuntime = {
+    capture: MemoryCapture;
+    storage: MemoryStorage | null;
+};
+export declare function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): MemoryRuntime;
+export declare function mountMemoryCapture(root: HostContext, rawConfig?: unknown): MemoryCapture;
+export declare function apply(root: HostContext, rawConfig?: unknown): void;
 export { TOOL_NAME };

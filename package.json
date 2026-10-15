@@ -13,7 +13,7 @@
     "test": "npm run build && node --test test/*.test.mjs",
     "verify:manifest": "node test/manifest.test.mjs"
   },
-  "engines": { "node": ">=22" },
+  "engines": { "node": ">=22.5" },
   "devDependencies": { "@dsh-std/manifest": "0.1.1-rc.3", "typescript": "^5.7.3" },
   "peerDependencies": { "@deepseek-ai/cordis": ">=4.0.4", "@deepseek-ai/dsh": ">=0.2.0-rc.2" },
   "peerDependenciesMeta": {

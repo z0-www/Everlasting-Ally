@@ -10,4 +10,5 @@ test('manifest parses as Community dsh-plugin 0.15', () => {
   assert.equal(manifest.version, '0.1.0')
   const projection = projectManifest(manifest)
   assert.ok(projection.spec.facets.some((facet) => facet.name === 'host'))
+  assert.deepEqual(manifest.contributes['x-tool-namespaces'][0].tools, ['inside_memory_ping', 'inside_memory_status'])
 })

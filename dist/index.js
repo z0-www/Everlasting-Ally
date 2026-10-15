@@ -1,5 +1,7 @@
 /** Minimal Everlasting Ally host facet. */
 import { MemoryCapture } from './memory/capture.js';
+import { resolveMemoryConfig } from './memory/config.js';
+import { MemoryStorage } from './memory/storage.js';
 const TOOL_NAME = 'inside_memory_ping';
 function normalizeMessage(args) {
     if (typeof args !== 'object' || args === null || Array.isArray(args))
@@ -8,20 +10,36 @@ function normalizeMessage(args) {
     return typeof message === 'string' && message.trim() ? message.trim() : 'Everlasting Ally is loaded.';
 }
 export const name = 'everlasting-ally';
-export function mountMemoryCapture(root) {
-    const capture = new MemoryCapture();
+export function mountMemoryRuntime(root, rawConfig) {
+    const config = resolveMemoryConfig(rawConfig);
+    let storage = null;
+    try {
+        storage = new MemoryStorage(config);
+    }
+    catch {
+        storage = null;
+    }
+    const capture = new MemoryCapture((event) => {
+        storage?.saveEvent(event);
+    });
     if (typeof root.on !== 'function')
-        return capture;
+        return { capture, storage };
     const dispose = root.on('session/event', (session, event) => {
         capture.handleSessionEvent(session, event);
     });
     if (typeof dispose === 'function' && typeof root.effect === 'function') {
         root.effect(() => dispose, 'everlasting-ally: session event listener');
     }
-    return capture;
+    if (storage && typeof root.effect === 'function') {
+        root.effect(() => () => storage?.close(), 'everlasting-ally: memory database');
+    }
+    return { capture, storage };
 }
-export function apply(root) {
-    mountMemoryCapture(root);
+export function mountMemoryCapture(root, rawConfig) {
+    return mountMemoryRuntime(root, rawConfig).capture;
+}
+export function apply(root, rawConfig) {
+    const runtime = mountMemoryRuntime(root, rawConfig);
     root.inject(['tools'], (ctx) => {
         const unregister = ctx.tools.register({
             name: TOOL_NAME,
@@ -44,6 +62,35 @@ export function apply(root) {
             })
         });
         ctx.effect(() => unregister, 'everlasting-ally: tool registration');
+        const statusUnregister = ctx.tools.register({
+            name: 'inside_memory_status',
+            description: 'Return memory capture status and aggregate counts without returning event content.',
+            parameters: { type: 'object', properties: {}, additionalProperties: false },
+            output: {
+                schema: {
+                    type: 'object',
+                    properties: {
+                        enabled: { type: 'boolean' }, databaseStatus: { type: 'string' },
+                        eventCount: { type: 'integer' }, sessionCount: { type: 'integer' },
+                        lastSuccessfulWriteAt: { type: 'string' },
+                    },
+                    required: ['enabled', 'databaseStatus', 'eventCount', 'sessionCount', 'lastSuccessfulWriteAt'],
+                    additionalProperties: false,
+                },
+                render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+            },
+            execute: async () => {
+                const stats = runtime.storage?.getMemoryStats();
+                return {
+                    enabled: stats?.enabled ?? resolveMemoryConfig(rawConfig).enabled,
+                    databaseStatus: stats?.databaseStatus ?? 'unavailable',
+                    eventCount: stats?.eventCount ?? 0,
+                    sessionCount: stats?.sessionCount ?? 0,
+                    lastSuccessfulWriteAt: stats?.lastSuccessfulWriteAt ?? '',
+                };
+            },
+        });
+        ctx.effect(() => statusUnregister, 'everlasting-ally: status tool registration');
     });
 }
 export { TOOL_NAME };

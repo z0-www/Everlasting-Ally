@@ -11,7 +11,7 @@
     "x-display": [{ "title": "Everlasting Ally", "description": "A foundation for long-term memory and continuity in DeepSeek Harness." }],
     "x-tool-namespaces": [{
       "serverName": "everlasting-ally", "transport": "in-process",
-      "source": "Everlasting Ally host facet", "publicPrefix": "", "tools": ["inside_memory_ping"]
+      "source": "Everlasting Ally host facet", "publicPrefix": "", "tools": ["inside_memory_ping", "inside_memory_status"]
     }]
   },
   "subscriptions": []

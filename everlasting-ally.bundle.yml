@@ -2,4 +2,6 @@
 - insert:
     - id: everlasting-ally
       name: everlasting-ally
-      config: {}
+      config:
+        memory:
+          enabled: false

@@ -16,9 +16,9 @@ AI 描述为具有人类意识或真实情绪，也不会为了营造人格而�
 
 记忆数据库、情绪标签、反思调用、人格系统和前端页面尚未实现。
 
-## v0.2 事件采集基础
+## v0.2 事件采集基础（历史基础）
 
-第二阶段目前只增加数据结构和会话事件监听，不做持久化：
+第二阶段增加了数据结构和会话事件监听。当前分支还没有持久化：
 
 - src/memory/types.ts 定义双方消息、工具调用、工具结果和回合结束事件。
 - src/memory/capture.ts 监听公开的 session/event 流，并保留内存中的结构化事件。
@@ -27,11 +27,43 @@ AI 描述为具有人类意识或真实情绪，也不会为了营造人格而�
 - 未知事件、来源不明事件和角色冲突事件会跳过；缺少内容的已知事件标记为 partial。
 - 情绪、意义、重要性和关联记忆字段只作为空字段预留，不会被自动推断。
 
-本阶段没有 SQLite、状态工具、Prompt 注入、隐私过滤或第三方上传。当前内存事件会随插件进程结束而消失。
+（第二阶段分支的说明保留在这里；持久化实现见当前第三阶段代码。）
+
+## v0.3 SQLite 持久化与隐私控制
+
+当前分支使用 Node.js 内置的 node:sqlite，不引入第三方数据库依赖。MemoryStorage
+负责 schema 初始化、版本记录、参数化查询、幂等写入、跨进程重启读取、删除和安全关闭。
+数据库文件默认放在应用数据目录：
+
+- Windows：APPDATA/everlasting-ally/memory.sqlite
+- Linux：XDG_DATA_HOME/everlasting-ally/memory.sqlite，未设置时使用 HOME/.local/share
+
+默认配置是关闭内容持久化。通过 DSH facet/bundle 配置显式启用：
+
+    {
+      "memory": {
+        "enabled": true,
+        "captureUserMessages": true,
+        "captureAssistantMessages": true,
+        "captureToolEvents": true,
+        "maxEventBytes": 65536,
+        "retentionDays": 0
+      }
+    }
+
+配置关闭后不会写入事件；删除接口只作为受信任的程序接口提供，没有暴露给模型的
+无确认删除工具。明显的 token、password、secret、authorization 等字段会被替换为
+[REDACTED]，过滤规则不是绝对可靠保障。超出大小限制的事件只保存元数据并标记
+partial；数据库错误不会把事件内容写入日志。
+
+程序接口包括 saveEvent、getEvent、listSessionEvents、listRecentEvents、
+deleteSession、clearAllMemories 和 getMemoryStats。inside_memory_status 只返回开关、
+数据库状态、事件数、会话数和最近写入时间，不返回正文。
 
 ## 本地开发
 
-需要 Node.js 22 或更高版本：
+需要支持 node:sqlite 的 Node.js 22.5 或更高版本；DSH Desktop 目标运行时应使用其
+随附的兼容 Node 版本：
 
     npm ci
     npm test
@@ -56,9 +88,10 @@ npm test 会先将 TypeScript 编译到 dist/，然后运行工具注册测试�
 
 - 本云端只验证了 Node.js 构建、manifest 解析和模拟 DSH tool registry；没有声称已在
   DSH Desktop 中加载成功。
-- 云端测试覆盖模拟的 DSH session/event 监听；真实 DSH Desktop 事件字段仍需在 Windows
-  环境中进行 smoke test。
-- 后续阶段可在当前 MemoryEvent 接口上增加 SQLite 存储，再单独设计隐私开关和删除能力。
+- 云端测试覆盖 Node.js SQLite 和模拟的 DSH session/event 监听；真实 DSH Desktop
+  加载及 Windows Node 版本的内置 SQLite 行为仍需在 Windows 环境中 smoke test。
+- 后续阶段可在当前事件和存储接口上增加更细的用户管理界面，但本阶段不实现情绪、
+  向量搜索、Prompt 注入或人格系统。
 
 ## 参考
 
