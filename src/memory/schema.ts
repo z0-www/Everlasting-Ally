@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite'
 
-export const CURRENT_SCHEMA_VERSION = 2
+export const CURRENT_SCHEMA_VERSION = 3
 type Migration = (db: DatabaseSync) => void
 const MIGRATIONS: Record<number, Migration> = {
   2: (db) => {
@@ -31,6 +31,36 @@ const MIGRATIONS: Record<number, Migration> = {
       CREATE INDEX IF NOT EXISTS idx_memory_orbs_session ON memory_orbs(session_id, timestamp);
       CREATE INDEX IF NOT EXISTS idx_memory_orbs_importance ON memory_orbs(importance DESC);
       CREATE INDEX IF NOT EXISTS idx_memory_orbs_actor ON memory_orbs(actor);
+    `)
+  },
+  3: (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS memory_reflections (
+        id TEXT PRIMARY KEY,
+        dedupe_key TEXT NOT NULL UNIQUE,
+        reflection_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        lesson TEXT,
+        source_event_ids_json TEXT NOT NULL,
+        source_orb_ids_json TEXT NOT NULL,
+        session_ids_json TEXT NOT NULL,
+        evidence_status TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        verification_status TEXT NOT NULL,
+        analysis_method TEXT NOT NULL,
+        analysis_version TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS reflection_sources (
+        reflection_id TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        PRIMARY KEY (reflection_id, event_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_reflections_session ON memory_reflections(session_ids_json);
+      CREATE INDEX IF NOT EXISTS idx_reflections_type ON memory_reflections(reflection_type);
+      CREATE INDEX IF NOT EXISTS idx_reflections_status ON memory_reflections(verification_status);
     `)
   },
 }

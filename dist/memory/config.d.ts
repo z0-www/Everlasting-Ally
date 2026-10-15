@@ -5,6 +5,14 @@ export type MemoryConfig = {
     captureToolEvents: boolean;
     analysisEnabled: boolean;
     recallEnabled: boolean;
+    reflectionEnabled: boolean;
+    modelReflectionEnabled: boolean;
+    maxReflectionEvents: number;
+    maxInputChars: number;
+    maxOutputChars: number;
+    maxModelCalls: number;
+    maxTokensPerRun: number;
+    reflectionTimeoutMs: number;
     maxEventBytes: number;
     retentionDays: number;
     databasePath: string;

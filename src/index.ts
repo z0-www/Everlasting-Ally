@@ -4,6 +4,8 @@ import { resolveMemoryConfig } from './memory/config.js'
 import { MemoryStorage, type MemoryStats } from './memory/storage.js'
 import { MemoryOrbService } from './memory/orb/service.js'
 import { MemoryRecallService } from './memory/recall/service.js'
+import { ReflectionService } from './memory/reflection/service.js'
+import type { ReflectionBudget } from './memory/reflection/types.js'
 import type { SessionEventLike, SessionLike } from './memory/types.js'
 
 type ToolResult = { ok: true; plugin: 'everlasting-ally'; message: string }
@@ -42,6 +44,7 @@ export type MemoryRuntime = {
   capture: MemoryCapture
   storage: MemoryStorage | null
   orbService: MemoryOrbService | null
+  reflectionService: ReflectionService | null
 }
 
 export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): MemoryRuntime {
@@ -53,11 +56,22 @@ export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): Memo
     storage = null
   }
   const orbService = storage ? new MemoryOrbService(storage) : null
+  const reflectionBudget: ReflectionBudget = {
+    reflectionEnabled: config.reflectionEnabled,
+    modelReflectionEnabled: config.modelReflectionEnabled,
+    maxReflectionEvents: config.maxReflectionEvents,
+    maxInputChars: config.maxInputChars,
+    maxOutputChars: config.maxOutputChars,
+    maxModelCalls: config.maxModelCalls,
+    maxTokensPerRun: config.maxTokensPerRun,
+    reflectionTimeoutMs: config.reflectionTimeoutMs,
+  }
+  const reflectionService = storage ? new ReflectionService(storage, reflectionBudget) : null
   const capture = new MemoryCapture((event) => {
     const result = storage?.saveEvent(event)
     if (result?.saved) orbService?.enqueue(event)
   })
-  if (typeof root.on !== 'function') return { capture, storage, orbService }
+  if (typeof root.on !== 'function') return { capture, storage, orbService, reflectionService }
   const dispose = root.on('session/event', (session, event) => {
     capture.handleSessionEvent(session, event)
   })
@@ -70,7 +84,7 @@ export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): Memo
   if (storage && typeof root.effect === 'function') {
     root.effect(() => () => storage?.close(), 'everlasting-ally: memory database')
   }
-  return { capture, storage, orbService }
+  return { capture, storage, orbService, reflectionService }
 }
 
 export function mountMemoryCapture(root: HostContext, rawConfig?: unknown): MemoryCapture {
@@ -113,7 +127,7 @@ export function apply(root: HostContext, rawConfig?: unknown): void {
             eventCount: { type: 'integer' }, sessionCount: { type: 'integer' },
             lastSuccessfulWriteAt: { type: 'string' },
           },
-          required: ['enabled', 'databaseStatus', 'eventCount', 'sessionCount', 'lastSuccessfulWriteAt'],
+          required: ['pluginVersion', 'enabled', 'databaseStatus', 'eventCount', 'sessionCount', 'lastSuccessfulWriteAt'],
           additionalProperties: false,
         },
         render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
@@ -121,7 +135,7 @@ export function apply(root: HostContext, rawConfig?: unknown): void {
       execute: async (): Promise<StatusResult> => {
         const stats = runtime.storage?.getMemoryStats()
         return {
-          pluginVersion: stats?.pluginVersion ?? '0.5.0',
+          pluginVersion: stats?.pluginVersion ?? '0.6.0',
           enabled: stats?.enabled ?? resolveMemoryConfig(rawConfig).enabled,
           databaseStatus: stats?.databaseStatus ?? 'unavailable',
           eventCount: stats?.eventCount ?? 0,
@@ -168,6 +182,27 @@ export function apply(root: HostContext, rawConfig?: unknown): void {
       },
     })
     ctx.effect(() => recallUnregister, 'everlasting-ally: recall tool registration')
+    const reflectionUnregister = ctx.tools.register({
+      name: 'inside_memory_reflections',
+      description: 'Read existing evidence-backed reflection summaries without creating new reflections.',
+      parameters: {
+        type: 'object',
+        properties: { sessionId: { type: 'string' }, type: { type: 'string' }, limit: { type: 'integer' } },
+        additionalProperties: false,
+      },
+      output: {
+        schema: { type: 'object', properties: { reflections: { type: 'array' } }, required: ['reflections'], additionalProperties: false },
+        render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+      },
+      execute: async (args): Promise<Record<string, unknown>> => {
+        if (!runtime.reflectionService) return { reflections: [] }
+        const input = typeof args === 'object' && args !== null ? args as Record<string, unknown> : {}
+        const options: { sessionId?: string; type?: never; limit: number } = { limit: typeof input.limit === 'number' ? input.limit : 20 }
+        if (typeof input.sessionId === 'string') options.sessionId = input.sessionId
+        return { reflections: runtime.reflectionService.listReflections(options) }
+      },
+    })
+    ctx.effect(() => reflectionUnregister, 'everlasting-ally: reflections tool registration')
   })
 }
 export { TOOL_NAME }

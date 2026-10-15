@@ -9,7 +9,8 @@ export function buildRecallContext(candidates, maxChars = 2000) {
     const lines = [];
     let used = 0;
     for (const candidate of candidates) {
-        const line = '[' + candidate.event.actor + '|' + candidate.event.timestamp + '] ' + content(candidate) + ' (证据: ' + candidate.evidenceEventIds.join(', ') + ')';
+        const body = candidate.reflection ? candidate.reflection.summary + (candidate.reflection.lesson ? ' 经验: ' + candidate.reflection.lesson : '') : content(candidate);
+        const line = '[' + candidate.event.actor + '|' + candidate.event.timestamp + '] ' + body + ' (证据: ' + candidate.evidenceEventIds.join(', ') + ')';
         if (used + line.length + 1 > maxChars)
             break;
         lines.push(line);

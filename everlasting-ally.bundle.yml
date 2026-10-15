@@ -6,3 +6,4 @@
         memory:
           enabled: false
           recallEnabled: false
+          reflectionEnabled: false

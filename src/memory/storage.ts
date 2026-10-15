@@ -5,6 +5,7 @@ import type { MemoryConfig } from './config.js'
 import { initializeSchema } from './schema.js'
 import type { JsonValue, MemoryEvent } from './types.js'
 import type { MemoryOrb } from './orb/types.js'
+import type { ReflectionRecord } from './reflection/types.js'
 
 export type MemoryStats = {
   pluginVersion: string
@@ -19,11 +20,12 @@ export type SaveEventResult = {
   reason?: 'disabled' | 'filtered' | 'too_large' | 'unavailable' | 'closed' | 'duplicate'
 }
 export type SaveOrbResult = { saved: boolean; reason?: 'disabled' | 'analysis_disabled' | 'unavailable' | 'closed' | 'duplicate' }
+export type SaveReflectionResult = { saved: boolean; reason?: 'disabled' | 'reflection_disabled' | 'unavailable' | 'closed' | 'duplicate' }
 
 const SENSITIVE_KEY = /password|passphrase|token|secret|api[_-]?key|authorization|cookie|credential/i
 const SENSITIVE_VALUE = /bearer\s+[a-z0-9._~+/=-]{8,}|(?:sk|ghp|github_pat|xox[baprs])-[a-z0-9_-]{8,}|\b(?:password|token|secret|api[_-]?key)\s*[:=]\s*\S+/i
 const REDACTED = '[REDACTED]'
-export const PLUGIN_VERSION = '0.5.0'
+export const PLUGIN_VERSION = '0.6.0'
 
 function sanitize(value: JsonValue, key = ''): JsonValue {
   if (SENSITIVE_KEY.test(key)) return REDACTED
@@ -73,6 +75,18 @@ function rowToOrb(row: Record<string, unknown>): MemoryOrb {
     evidenceEventIds: array(row.evidence_event_ids_json),
     analysisMethod: row.analysis_method as MemoryOrb['analysisMethod'], analysisVersion: String(row.analysis_version),
     reviewStatus: row.review_status as MemoryOrb['reviewStatus'], createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+  }
+}
+function rowToReflection(row: Record<string, unknown>): ReflectionRecord {
+  const array = (value: unknown): string[] => (parseJson(value) as string[] | null) ?? []
+  return {
+    id: String(row.id), reflectionType: row.reflection_type as ReflectionRecord['reflectionType'],
+    title: String(row.title), summary: String(row.summary), lesson: typeof row.lesson === 'string' ? row.lesson : null,
+    sourceEventIds: array(row.source_event_ids_json), sourceOrbIds: array(row.source_orb_ids_json),
+    sessionIds: array(row.session_ids_json), evidenceStatus: row.evidence_status as ReflectionRecord['evidenceStatus'],
+    confidence: Number(row.confidence), verificationStatus: row.verification_status as ReflectionRecord['verificationStatus'],
+    analysisMethod: row.analysis_method as ReflectionRecord['analysisMethod'],
+    analysisVersion: String(row.analysis_version), createdAt: String(row.created_at), updatedAt: String(row.updated_at),
   }
 }
 
@@ -140,6 +154,14 @@ export class MemoryStorage {
       for (const row of rows) {
         const ids = parseJson(row.source_event_ids_json) as string[] | null
         if (ids?.includes(id)) this.db.prepare('DELETE FROM memory_orbs WHERE id = ?').run(row.id)
+      }
+      const reflections = this.db.prepare('SELECT id, source_event_ids_json, summary, lesson FROM memory_reflections').all()
+      for (const row of reflections) {
+        const ids = parseJson(row.source_event_ids_json) as string[] | null
+        if (ids?.includes(id)) {
+          this.db.prepare('DELETE FROM reflection_sources WHERE reflection_id = ?').run(row.id)
+          this.db.prepare('DELETE FROM memory_reflections WHERE id = ?').run(row.id)
+        }
       }
       const deleted = Number(this.db.prepare('DELETE FROM memory_events WHERE id = ?').run(id).changes) > 0
       this.db.exec('COMMIT')
@@ -228,12 +250,82 @@ export class MemoryStorage {
     if (!this.db) return false
     try { return Number(this.db.prepare('DELETE FROM memory_orbs WHERE id = ?').run(id).changes) > 0 } catch { return false }
   }
+  saveReflection(reflection: ReflectionRecord): SaveReflectionResult {
+    if (!this.config.enabled) return { saved: false, reason: 'disabled' }
+    if (!this.config.reflectionEnabled) return { saved: false, reason: 'reflection_disabled' }
+    if (!this.db) return { saved: false, reason: this.lastError ? 'unavailable' : 'closed' }
+    const dedupeKey = reflection.sourceEventIds.slice().sort().join(',') + '|' + reflection.reflectionType + '|' + reflection.analysisVersion
+    try {
+      const result = this.db.prepare(`
+        INSERT OR IGNORE INTO memory_reflections (
+          id, dedupe_key, reflection_type, title, summary, lesson, source_event_ids_json,
+          source_orb_ids_json, session_ids_json, evidence_status, confidence,
+          verification_status, analysis_method, analysis_version, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        reflection.id, dedupeKey, reflection.reflectionType, reflection.title, reflection.summary, reflection.lesson,
+        json(reflection.sourceEventIds) ?? '[]', json(reflection.sourceOrbIds) ?? '[]', json(reflection.sessionIds) ?? '[]',
+        reflection.evidenceStatus, reflection.confidence, reflection.verificationStatus, reflection.analysisMethod,
+        reflection.analysisVersion, reflection.createdAt, reflection.updatedAt,
+      )
+      if (Number(result.changes) === 0) return { saved: false, reason: 'duplicate' }
+      const source = this.db.prepare('INSERT OR IGNORE INTO reflection_sources(reflection_id, event_id) VALUES (?, ?)')
+      for (const eventId of reflection.sourceEventIds) source.run(reflection.id, eventId)
+      return { saved: true }
+    } catch (error) {
+      this.lastError = error instanceof Error ? error.name : 'database error'
+      return { saved: false, reason: 'unavailable' }
+    }
+  }
+  getReflection(id: string): ReflectionRecord | null {
+    const row = this.db?.prepare('SELECT * FROM memory_reflections WHERE id = ?').get(id)
+    return row ? rowToReflection(row) : null
+  }
+  listReflections(options: { sessionId?: string; type?: ReflectionRecord['reflectionType']; limit?: number } = {}): ReflectionRecord[] {
+    const limit = Math.max(1, Math.min(1000, Math.floor(options.limit ?? 100)))
+    const rows = this.db?.prepare('SELECT * FROM memory_reflections ORDER BY updated_at DESC LIMIT ?').all(limit) ?? []
+    return rows.map(rowToReflection).filter((reflection) =>
+      (!options.sessionId || reflection.sessionIds.includes(options.sessionId)) &&
+      (!options.type || reflection.reflectionType === options.type))
+  }
+  updateReflection(reflection: ReflectionRecord): boolean {
+    if (!this.db) return false
+    try {
+      const result = this.db.prepare(`
+        UPDATE memory_reflections SET title = ?, summary = ?, lesson = ?, evidence_status = ?,
+        confidence = ?, verification_status = ?, updated_at = ? WHERE id = ?
+      `).run(reflection.title, reflection.summary, reflection.lesson, reflection.evidenceStatus,
+        reflection.confidence, reflection.verificationStatus, reflection.updatedAt, reflection.id)
+      return Number(result.changes) > 0
+    } catch { return false }
+  }
+  deleteReflection(id: string): boolean {
+    if (!this.db) return false
+    try {
+      this.db.exec('BEGIN')
+      const changed = Number(this.db.prepare('DELETE FROM memory_reflections WHERE id = ?').run(id).changes) > 0
+      this.db.prepare('DELETE FROM reflection_sources WHERE reflection_id = ?').run(id)
+      this.db.exec('COMMIT')
+      return changed
+    } catch {
+      try { this.db.exec('ROLLBACK') } catch {}
+      return false
+    }
+  }
   deleteSession(sessionId: string): boolean {
     if (!this.db) return false
     try {
       this.db.exec('BEGIN')
       const changed = Number(this.db.prepare('DELETE FROM memory_events WHERE session_id = ?').run(sessionId).changes) > 0
       this.db.prepare('DELETE FROM memory_orbs WHERE session_id = ?').run(sessionId)
+      const reflections = this.db.prepare('SELECT id, session_ids_json FROM memory_reflections').all()
+      for (const row of reflections) {
+        const sessions = parseJson(row.session_ids_json) as string[] | null
+        if (sessions?.includes(sessionId)) {
+          this.db.prepare('DELETE FROM reflection_sources WHERE reflection_id = ?').run(row.id)
+          this.db.prepare('DELETE FROM memory_reflections WHERE id = ?').run(row.id)
+        }
+      }
       this.db.exec('COMMIT')
       return changed
     } catch {
@@ -246,6 +338,8 @@ export class MemoryStorage {
     try {
       this.db.exec('BEGIN')
       this.db.prepare('DELETE FROM memory_orbs').run()
+      this.db.prepare('DELETE FROM reflection_sources').run()
+      this.db.prepare('DELETE FROM memory_reflections').run()
       this.db.prepare('DELETE FROM memory_events').run()
       this.db.exec('COMMIT')
       return true

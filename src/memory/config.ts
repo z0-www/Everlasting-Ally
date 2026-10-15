@@ -8,6 +8,14 @@ export type MemoryConfig = {
   captureToolEvents: boolean
   analysisEnabled: boolean
   recallEnabled: boolean
+  reflectionEnabled: boolean
+  modelReflectionEnabled: boolean
+  maxReflectionEvents: number
+  maxInputChars: number
+  maxOutputChars: number
+  maxModelCalls: number
+  maxTokensPerRun: number
+  reflectionTimeoutMs: number
   maxEventBytes: number
   retentionDays: number
   databasePath: string
@@ -39,6 +47,14 @@ export function resolveMemoryConfig(rawConfig?: unknown): MemoryConfig {
     captureToolEvents: booleanValue(memory.captureToolEvents, true),
     analysisEnabled: booleanValue(memory.analysisEnabled, false),
     recallEnabled: booleanValue(memory.recallEnabled, false),
+    reflectionEnabled: booleanValue(memory.reflectionEnabled, false),
+    modelReflectionEnabled: booleanValue(memory.modelReflectionEnabled, false),
+    maxReflectionEvents: positiveInteger(memory.maxReflectionEvents, 100),
+    maxInputChars: positiveInteger(memory.maxInputChars, 16000),
+    maxOutputChars: positiveInteger(memory.maxOutputChars, 4000),
+    maxModelCalls: positiveInteger(memory.maxModelCalls, 0),
+    maxTokensPerRun: positiveInteger(memory.maxTokensPerRun, 0),
+    reflectionTimeoutMs: positiveInteger(memory.reflectionTimeoutMs, 5000),
     maxEventBytes: positiveInteger(memory.maxEventBytes, DEFAULT_MAX_EVENT_BYTES),
     retentionDays: typeof memory.retentionDays === 'number' && Number.isInteger(memory.retentionDays) && memory.retentionDays >= 0
       ? memory.retentionDays : 0,

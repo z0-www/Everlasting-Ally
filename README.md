@@ -137,6 +137,21 @@ DeepSeek 具有人类情绪。重要性评分位于 importance.ts，依据明确
 插件组织方式参考了 T-Auto/dsh-ops 的公开源码：
 https://github.com/T-Auto/dsh-ops
 
+## v0.6 反思与成长记忆
+
+ReflectionService 提供受信任程序接口 reflectSession、consolidateMemories、
+listReflections 和 getReflection。reflectionEnabled 默认关闭，预算限制包括最大事件数、
+输入输出字符数、模型调用数、Token 预算和超时。当前只实现本地确定性规则分析，不会自动
+后台运行，也没有真实 DSH 模型 provider。
+
+反思记录保存在独立的 memory_reflections 和 reflection_sources 表中。原始事件与记忆球
+保持不变；反思记录只保存来源 ID、证据状态、置信度和复核状态。工具失败、用户纠正和
+助手自我声明会被分别处理，助手说“完成”不会自动生成 confirmed 成功记录。删除事件、
+会话或全部记忆时会清理派生反思。
+
+inside_memory_reflections 只读返回已有摘要。反思文本来自已保存证据，不读取模型思维链，
+不修改系统提示词，也不会执行历史消息中的指令。
+
 ## v0.5 主动回忆
 
 MemoryRecallService 使用本地确定性检索，从已保存的用户消息、助手消息和记忆球中

@@ -1,6 +1,6 @@
 {
   "name": "everlasting-ally",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "A minimal DeepSeek Harness plugin foundation for long-term companion memory.",
   "license": "MIT",
   "type": "module",

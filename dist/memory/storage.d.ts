@@ -1,6 +1,7 @@
 import type { MemoryConfig } from './config.js';
 import type { MemoryEvent } from './types.js';
 import type { MemoryOrb } from './orb/types.js';
+import type { ReflectionRecord } from './reflection/types.js';
 export type MemoryStats = {
     pluginVersion: string;
     enabled: boolean;
@@ -17,7 +18,11 @@ export type SaveOrbResult = {
     saved: boolean;
     reason?: 'disabled' | 'analysis_disabled' | 'unavailable' | 'closed' | 'duplicate';
 };
-export declare const PLUGIN_VERSION = "0.5.0";
+export type SaveReflectionResult = {
+    saved: boolean;
+    reason?: 'disabled' | 'reflection_disabled' | 'unavailable' | 'closed' | 'duplicate';
+};
+export declare const PLUGIN_VERSION = "0.6.0";
 export declare class MemoryStorage {
     readonly config: MemoryConfig;
     private db;
@@ -39,6 +44,15 @@ export declare class MemoryStorage {
     listCoreMemoryCandidates(limit?: number): MemoryOrb[];
     updateOrb(orb: MemoryOrb): boolean;
     deleteOrb(id: string): boolean;
+    saveReflection(reflection: ReflectionRecord): SaveReflectionResult;
+    getReflection(id: string): ReflectionRecord | null;
+    listReflections(options?: {
+        sessionId?: string;
+        type?: ReflectionRecord['reflectionType'];
+        limit?: number;
+    }): ReflectionRecord[];
+    updateReflection(reflection: ReflectionRecord): boolean;
+    deleteReflection(id: string): boolean;
     deleteSession(sessionId: string): boolean;
     clearAllMemories(): boolean;
     getMemoryStats(): MemoryStats;

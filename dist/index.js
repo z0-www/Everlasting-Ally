@@ -4,6 +4,7 @@ import { resolveMemoryConfig } from './memory/config.js';
 import { MemoryStorage } from './memory/storage.js';
 import { MemoryOrbService } from './memory/orb/service.js';
 import { MemoryRecallService } from './memory/recall/service.js';
+import { ReflectionService } from './memory/reflection/service.js';
 const TOOL_NAME = 'inside_memory_ping';
 function normalizeMessage(args) {
     if (typeof args !== 'object' || args === null || Array.isArray(args))
@@ -22,13 +23,24 @@ export function mountMemoryRuntime(root, rawConfig) {
         storage = null;
     }
     const orbService = storage ? new MemoryOrbService(storage) : null;
+    const reflectionBudget = {
+        reflectionEnabled: config.reflectionEnabled,
+        modelReflectionEnabled: config.modelReflectionEnabled,
+        maxReflectionEvents: config.maxReflectionEvents,
+        maxInputChars: config.maxInputChars,
+        maxOutputChars: config.maxOutputChars,
+        maxModelCalls: config.maxModelCalls,
+        maxTokensPerRun: config.maxTokensPerRun,
+        reflectionTimeoutMs: config.reflectionTimeoutMs,
+    };
+    const reflectionService = storage ? new ReflectionService(storage, reflectionBudget) : null;
     const capture = new MemoryCapture((event) => {
         const result = storage?.saveEvent(event);
         if (result?.saved)
             orbService?.enqueue(event);
     });
     if (typeof root.on !== 'function')
-        return { capture, storage, orbService };
+        return { capture, storage, orbService, reflectionService };
     const dispose = root.on('session/event', (session, event) => {
         capture.handleSessionEvent(session, event);
     });
@@ -41,7 +53,7 @@ export function mountMemoryRuntime(root, rawConfig) {
     if (storage && typeof root.effect === 'function') {
         root.effect(() => () => storage?.close(), 'everlasting-ally: memory database');
     }
-    return { capture, storage, orbService };
+    return { capture, storage, orbService, reflectionService };
 }
 export function mountMemoryCapture(root, rawConfig) {
     return mountMemoryRuntime(root, rawConfig).capture;
@@ -90,7 +102,7 @@ export function apply(root, rawConfig) {
             execute: async () => {
                 const stats = runtime.storage?.getMemoryStats();
                 return {
-                    pluginVersion: stats?.pluginVersion ?? '0.5.0',
+                    pluginVersion: stats?.pluginVersion ?? '0.6.0',
                     enabled: stats?.enabled ?? resolveMemoryConfig(rawConfig).enabled,
                     databaseStatus: stats?.databaseStatus ?? 'unavailable',
                     eventCount: stats?.eventCount ?? 0,
@@ -137,6 +149,29 @@ export function apply(root, rawConfig) {
             },
         });
         ctx.effect(() => recallUnregister, 'everlasting-ally: recall tool registration');
+        const reflectionUnregister = ctx.tools.register({
+            name: 'inside_memory_reflections',
+            description: 'Read existing evidence-backed reflection summaries without creating new reflections.',
+            parameters: {
+                type: 'object',
+                properties: { sessionId: { type: 'string' }, type: { type: 'string' }, limit: { type: 'integer' } },
+                additionalProperties: false,
+            },
+            output: {
+                schema: { type: 'object', properties: { reflections: { type: 'array' } }, required: ['reflections'], additionalProperties: false },
+                render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+            },
+            execute: async (args) => {
+                if (!runtime.reflectionService)
+                    return { reflections: [] };
+                const input = typeof args === 'object' && args !== null ? args : {};
+                const options = { limit: typeof input.limit === 'number' ? input.limit : 20 };
+                if (typeof input.sessionId === 'string')
+                    options.sessionId = input.sessionId;
+                return { reflections: runtime.reflectionService.listReflections(options) };
+            },
+        });
+        ctx.effect(() => reflectionUnregister, 'everlasting-ally: reflections tool registration');
     });
 }
 export { TOOL_NAME };

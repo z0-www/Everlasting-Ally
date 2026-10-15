@@ -10,6 +10,12 @@ export function searchStoredMemories(storage: MemoryStorage, query: string, maxS
   const orbs = storage.listRecentOrbs(maxScan)
   const orbByEvent = new Map<string, typeof orbs[number]>()
   for (const orb of orbs) for (const eventId of orb.sourceEventIds) orbByEvent.set(eventId, orb)
-  return rankCandidates(events.map((event) => rankCandidate(event, orbByEvent.get(event.id) ?? null, tokens))
-    .filter((candidate) => candidate.matchedTokens.length > 0))
+  const candidates = events.map((event) => rankCandidate(event, orbByEvent.get(event.id) ?? null, tokens))
+  if (storage.config.reflectionEnabled) {
+    for (const reflection of storage.listReflections({ limit: maxScan })) {
+      const event = reflection.sourceEventIds.map((id) => storage.getEvent(id)).find((item) => item !== null)
+      if (event) candidates.push(rankCandidate(event, orbByEvent.get(event.id) ?? null, tokens, reflection))
+    }
+  }
+  return rankCandidates(candidates.filter((candidate) => candidate.matchedTokens.length > 0))
 }

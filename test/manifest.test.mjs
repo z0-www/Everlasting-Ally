@@ -7,8 +7,8 @@ const text = fs.readFileSync(new URL('../dsh-plugin.json', import.meta.url), 'ut
 test('manifest parses as Community dsh-plugin 0.15', () => {
   const manifest = parseManifest(text, { source: 'dsh-plugin.json' })
   assert.equal(manifest.manifestVersion, '0.15')
-  assert.equal(manifest.version, '0.5.0')
+  assert.equal(manifest.version, '0.6.0')
   const projection = projectManifest(manifest)
   assert.ok(projection.spec.facets.some((facet) => facet.name === 'host'))
-  assert.deepEqual(manifest.contributes['x-tool-namespaces'][0].tools, ['inside_memory_ping', 'inside_memory_status', 'inside_memory_recall'])
+  assert.deepEqual(manifest.contributes['x-tool-namespaces'][0].tools, ['inside_memory_ping', 'inside_memory_status', 'inside_memory_recall', 'inside_memory_reflections'])
 })

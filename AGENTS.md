@@ -2,8 +2,9 @@
 
 This repository implements the v0.1 DSH host facet, v0.2 session event capture,
 v0.3 local SQLite persistence with privacy controls, and v0.4 local rule based
-memory orb analysis, and v0.5 local deterministic recall. It does not implement
-personality continuity, vector search, prompt injection, or a desktop UI.
+memory orb analysis, v0.5 local deterministic recall, and v0.6 local reflection
+records. It does not implement personality continuity, vector search, prompt
+injection, or a desktop UI.
 
 Commands:
 
@@ -18,6 +19,10 @@ keys, tokens, passwords, or real chat transcripts.
 The v0.4 analyzer is local and conservative. It records uncertainty and
 behavior style separately from human emotion. A remote model provider is only
 an interface placeholder until a supported DSH API is verified.
+
+Reflection is disabled by default and only runs through trusted programmatic
+interfaces. Never expose raw event text in logs or add an automatic background
+reflection loop.
 
 The plugin follows the public tool registration shape verified in the
 T-Auto/dsh-ops source: ctx.inject(['tools'], ...) and
