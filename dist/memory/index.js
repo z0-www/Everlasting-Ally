@@ -1,3 +1,7 @@
 export { MemoryCapture } from './capture.js';
 export { MemoryStorage } from './storage.js';
 export { resolveMemoryConfig, defaultMemoryConfig, defaultDatabasePath } from './config.js';
+export { MemoryOrbService } from './orb/service.js';
+export { LocalRuleAnalyzer, createUnavailableModelProvider } from './orb/analyzer.js';
+export { scoreImportance } from './orb/importance.js';
+export { colorForEmotion, colorsForEmotions, EMOTION_COLORS } from './orb/colors.js';

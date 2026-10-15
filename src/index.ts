@@ -2,6 +2,7 @@
 import { MemoryCapture } from './memory/capture.js'
 import { resolveMemoryConfig } from './memory/config.js'
 import { MemoryStorage, type MemoryStats } from './memory/storage.js'
+import { MemoryOrbService } from './memory/orb/service.js'
 import type { SessionEventLike, SessionLike } from './memory/types.js'
 
 type ToolResult = { ok: true; plugin: 'everlasting-ally'; message: string }
@@ -39,6 +40,7 @@ export const name = 'everlasting-ally'
 export type MemoryRuntime = {
   capture: MemoryCapture
   storage: MemoryStorage | null
+  orbService: MemoryOrbService | null
 }
 
 export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): MemoryRuntime {
@@ -49,20 +51,25 @@ export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): Memo
   } catch {
     storage = null
   }
+  const orbService = storage ? new MemoryOrbService(storage) : null
   const capture = new MemoryCapture((event) => {
-    storage?.saveEvent(event)
+    const result = storage?.saveEvent(event)
+    if (result?.saved) orbService?.enqueue(event)
   })
-  if (typeof root.on !== 'function') return { capture, storage }
+  if (typeof root.on !== 'function') return { capture, storage, orbService }
   const dispose = root.on('session/event', (session, event) => {
     capture.handleSessionEvent(session, event)
   })
   if (typeof dispose === 'function' && typeof root.effect === 'function') {
     root.effect(() => dispose, 'everlasting-ally: session event listener')
   }
+  if (orbService && typeof root.effect === 'function') {
+    root.effect(() => () => orbService.close(), 'everlasting-ally: memory orb queue')
+  }
   if (storage && typeof root.effect === 'function') {
     root.effect(() => () => storage?.close(), 'everlasting-ally: memory database')
   }
-  return { capture, storage }
+  return { capture, storage, orbService }
 }
 
 export function mountMemoryCapture(root: HostContext, rawConfig?: unknown): MemoryCapture {
@@ -113,7 +120,7 @@ export function apply(root: HostContext, rawConfig?: unknown): void {
       execute: async (): Promise<StatusResult> => {
         const stats = runtime.storage?.getMemoryStats()
         return {
-          pluginVersion: stats?.pluginVersion ?? '0.3.0',
+          pluginVersion: stats?.pluginVersion ?? '0.4.0',
           enabled: stats?.enabled ?? resolveMemoryConfig(rawConfig).enabled,
           databaseStatus: stats?.databaseStatus ?? 'unavailable',
           eventCount: stats?.eventCount ?? 0,

@@ -2,6 +2,7 @@
 import { MemoryCapture } from './memory/capture.js';
 import { resolveMemoryConfig } from './memory/config.js';
 import { MemoryStorage } from './memory/storage.js';
+import { MemoryOrbService } from './memory/orb/service.js';
 const TOOL_NAME = 'inside_memory_ping';
 function normalizeMessage(args) {
     if (typeof args !== 'object' || args === null || Array.isArray(args))
@@ -19,21 +20,27 @@ export function mountMemoryRuntime(root, rawConfig) {
     catch {
         storage = null;
     }
+    const orbService = storage ? new MemoryOrbService(storage) : null;
     const capture = new MemoryCapture((event) => {
-        storage?.saveEvent(event);
+        const result = storage?.saveEvent(event);
+        if (result?.saved)
+            orbService?.enqueue(event);
     });
     if (typeof root.on !== 'function')
-        return { capture, storage };
+        return { capture, storage, orbService };
     const dispose = root.on('session/event', (session, event) => {
         capture.handleSessionEvent(session, event);
     });
     if (typeof dispose === 'function' && typeof root.effect === 'function') {
         root.effect(() => dispose, 'everlasting-ally: session event listener');
     }
+    if (orbService && typeof root.effect === 'function') {
+        root.effect(() => () => orbService.close(), 'everlasting-ally: memory orb queue');
+    }
     if (storage && typeof root.effect === 'function') {
         root.effect(() => () => storage?.close(), 'everlasting-ally: memory database');
     }
-    return { capture, storage };
+    return { capture, storage, orbService };
 }
 export function mountMemoryCapture(root, rawConfig) {
     return mountMemoryRuntime(root, rawConfig).capture;
@@ -82,7 +89,7 @@ export function apply(root, rawConfig) {
             execute: async () => {
                 const stats = runtime.storage?.getMemoryStats();
                 return {
-                    pluginVersion: stats?.pluginVersion ?? '0.3.0',
+                    pluginVersion: stats?.pluginVersion ?? '0.4.0',
                     enabled: stats?.enabled ?? resolveMemoryConfig(rawConfig).enabled,
                     databaseStatus: stats?.databaseStatus ?? 'unavailable',
                     eventCount: stats?.eventCount ?? 0,

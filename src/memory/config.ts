@@ -6,6 +6,7 @@ export type MemoryConfig = {
   captureUserMessages: boolean
   captureAssistantMessages: boolean
   captureToolEvents: boolean
+  analysisEnabled: boolean
   maxEventBytes: number
   retentionDays: number
   databasePath: string
@@ -35,6 +36,7 @@ export function resolveMemoryConfig(rawConfig?: unknown): MemoryConfig {
     captureUserMessages: booleanValue(memory.captureUserMessages, true),
     captureAssistantMessages: booleanValue(memory.captureAssistantMessages, true),
     captureToolEvents: booleanValue(memory.captureToolEvents, true),
+    analysisEnabled: booleanValue(memory.analysisEnabled, false),
     maxEventBytes: positiveInteger(memory.maxEventBytes, DEFAULT_MAX_EVENT_BYTES),
     retentionDays: typeof memory.retentionDays === 'number' && Number.isInteger(memory.retentionDays) && memory.retentionDays >= 0
       ? memory.retentionDays : 0,

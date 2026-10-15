@@ -3,6 +3,7 @@ export type MemoryConfig = {
     captureUserMessages: boolean;
     captureAssistantMessages: boolean;
     captureToolEvents: boolean;
+    analysisEnabled: boolean;
     maxEventBytes: number;
     retentionDays: number;
     databasePath: string;

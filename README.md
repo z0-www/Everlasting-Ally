@@ -46,6 +46,7 @@ AI 描述为具有人类意识或真实情绪，也不会为了营造人格而�
         "captureUserMessages": true,
         "captureAssistantMessages": true,
         "captureToolEvents": true,
+        "analysisEnabled": false,
         "maxEventBytes": 65536,
         "retentionDays": 0
       }
@@ -92,6 +93,44 @@ npm test 会先将 TypeScript 编译到 dist/，然后运行工具注册测试�
   加载及 Windows Node 版本的内置 SQLite 行为仍需在 Windows 环境中 smoke test。
 - 后续阶段可在当前事件和存储接口上增加更细的用户管理界面，但本阶段不实现情绪、
   向量搜索、Prompt 注入或人格系统。
+
+## v0.4 情绪记忆球与意义分析
+
+v0.4 在原始事件之外增加独立的记忆球解释记录。原始事件仍是事实证据，记忆球
+保存的是带置信度的解释，不会覆盖原始内容。
+
+本地规则分析器位于 src/memory/orb/analyzer.ts，支持多情绪标签、助手行为风格、
+保守意义摘要和 needs_review 状态。助手的友好、遗憾或兴奋用行为风格记录，不代表
+DeepSeek 具有人类情绪。重要性评分位于 importance.ts，依据明确的记忆请求、目标、
+纠正候选和工具证据计算 0 到 1 的分数；coreMemoryCandidate 只是候选。
+
+配置 memory.analysisEnabled 后，已成功保存的用户和助手事件会进入有限内存队列，
+由本地分析器异步生成记忆球。队列满时丢弃新的分析任务，不影响正常对话。当前没有
+经过 DSH 官方确认的模型调用适配器；createUnavailableModelProvider 会明确报告未配置，
+不会伪装成远程分析。历史消息不会被作为系统指令执行。
+
+记忆球保存在 schema v2 的 memory_orbs 表中，支持按事件、会话、情绪、重要性和核心
+候选查询，支持更新和删除。删除原始事件、会话或全部记忆时会同步删除派生记忆球。
+颜色映射位于 colors.ts，只提供前端元数据，不实现界面。
+
+示例（虚构数据）：
+
+    {
+      "id": "orb:event-42:local-rules-1",
+      "sourceEventIds": ["event-42"],
+      "actor": "user",
+      "emotions": ["fear", "anticipation"],
+      "emotionConfidence": 0.65,
+      "meaning": "The message contains observable cues that may matter to the user or the current task; review is recommended.",
+      "meaningConfidence": 0.35,
+      "importance": 0.7,
+      "coreMemoryCandidate": true,
+      "reviewStatus": "needs_review",
+      "analysisMethod": "local-rules"
+    }
+
+情绪和意义始终带有置信度与复核状态，规则无法判断时使用 neutral 或 unknown。
+敏感信息过滤沿用 v0.3，模型模式默认关闭且未接入真实远程服务。
 
 ## 参考
 

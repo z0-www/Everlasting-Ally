@@ -1,5 +1,36 @@
-export const CURRENT_SCHEMA_VERSION = 1;
-const MIGRATIONS = {};
+export const CURRENT_SCHEMA_VERSION = 2;
+const MIGRATIONS = {
+    2: (db) => {
+        db.exec(`
+      CREATE TABLE IF NOT EXISTS memory_orbs (
+        id TEXT PRIMARY KEY,
+        dedupe_key TEXT NOT NULL UNIQUE,
+        source_event_ids_json TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        actor TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        emotions_json TEXT NOT NULL,
+        emotion_confidence REAL NOT NULL,
+        meaning TEXT,
+        meaning_confidence REAL NOT NULL,
+        importance REAL NOT NULL,
+        importance_reasons_json TEXT NOT NULL,
+        core_memory_candidate INTEGER NOT NULL,
+        tags_json TEXT NOT NULL,
+        related_memory_ids_json TEXT NOT NULL,
+        evidence_event_ids_json TEXT NOT NULL,
+        analysis_method TEXT NOT NULL,
+        analysis_version TEXT NOT NULL,
+        review_status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_memory_orbs_session ON memory_orbs(session_id, timestamp);
+      CREATE INDEX IF NOT EXISTS idx_memory_orbs_importance ON memory_orbs(importance DESC);
+      CREATE INDEX IF NOT EXISTS idx_memory_orbs_actor ON memory_orbs(actor);
+    `);
+    },
+};
 export function initializeSchema(db) {
     db.exec(`
     PRAGMA foreign_keys = ON;
@@ -35,16 +66,13 @@ export function initializeSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_memory_events_call ON memory_events(session_id, call_id);
   `);
     const row = db.prepare('SELECT version FROM schema_version ORDER BY version DESC LIMIT 1').get();
-    if (!row) {
-        db.prepare('INSERT INTO schema_version(version, applied_at) VALUES (?, ?)').run(CURRENT_SCHEMA_VERSION, new Date().toISOString());
-    }
-    else {
-        const version = Number(row.version);
-        if (version > CURRENT_SCHEMA_VERSION)
-            throw new Error('Unsupported memory schema version: ' + String(version));
-        for (let next = version + 1; next <= CURRENT_SCHEMA_VERSION; next += 1) {
-            MIGRATIONS[next]?.(db);
-            db.prepare('INSERT INTO schema_version(version, applied_at) VALUES (?, ?)').run(next, new Date().toISOString());
-        }
+    const version = row ? Number(row.version) : 1;
+    if (version > CURRENT_SCHEMA_VERSION)
+        throw new Error('Unsupported memory schema version: ' + String(version));
+    if (!row)
+        db.prepare('INSERT INTO schema_version(version, applied_at) VALUES (?, ?)').run(1, new Date().toISOString());
+    for (let next = version + 1; next <= CURRENT_SCHEMA_VERSION; next += 1) {
+        MIGRATIONS[next]?.(db);
+        db.prepare('INSERT INTO schema_version(version, applied_at) VALUES (?, ?)').run(next, new Date().toISOString());
     }
 }

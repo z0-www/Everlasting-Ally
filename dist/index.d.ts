@@ -1,6 +1,7 @@
 /** Minimal Everlasting Ally host facet. */
 import { MemoryCapture } from './memory/capture.js';
 import { MemoryStorage } from './memory/storage.js';
+import { MemoryOrbService } from './memory/orb/service.js';
 import type { SessionEventLike, SessionLike } from './memory/types.js';
 type ToolContext = {
     tools: {
@@ -27,6 +28,7 @@ export declare const name = "everlasting-ally";
 export type MemoryRuntime = {
     capture: MemoryCapture;
     storage: MemoryStorage | null;
+    orbService: MemoryOrbService | null;
 };
 export declare function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): MemoryRuntime;
 export declare function mountMemoryCapture(root: HostContext, rawConfig?: unknown): MemoryCapture;

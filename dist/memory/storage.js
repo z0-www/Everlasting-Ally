@@ -5,7 +5,7 @@ import { initializeSchema } from './schema.js';
 const SENSITIVE_KEY = /password|passphrase|token|secret|api[_-]?key|authorization|cookie|credential/i;
 const SENSITIVE_VALUE = /bearer\s+[a-z0-9._~+/=-]{8,}|(?:sk|ghp|github_pat|xox[baprs])-[a-z0-9_-]{8,}|\b(?:password|token|secret|api[_-]?key)\s*[:=]\s*\S+/i;
 const REDACTED = '[REDACTED]';
-export const PLUGIN_VERSION = '0.3.0';
+export const PLUGIN_VERSION = '0.4.0';
 function sanitize(value, key = '') {
     if (SENSITIVE_KEY.test(key))
         return REDACTED;
@@ -56,6 +56,21 @@ function rowToEvent(row) {
         relatedMemories: parseJson(row.related_memories_json) ?? null,
     };
 }
+function rowToOrb(row) {
+    const array = (value) => parseJson(value) ?? [];
+    return {
+        id: String(row.id), sourceEventIds: array(row.source_event_ids_json),
+        sessionId: String(row.session_id), actor: row.actor,
+        timestamp: String(row.timestamp), emotions: array(row.emotions_json),
+        emotionConfidence: Number(row.emotion_confidence), meaning: typeof row.meaning === 'string' ? row.meaning : null,
+        meaningConfidence: Number(row.meaning_confidence), importance: Number(row.importance),
+        importanceReasons: array(row.importance_reasons_json), coreMemoryCandidate: Boolean(row.core_memory_candidate),
+        tags: array(row.tags_json), relatedMemoryIds: array(row.related_memory_ids_json),
+        evidenceEventIds: array(row.evidence_event_ids_json),
+        analysisMethod: row.analysis_method, analysisVersion: String(row.analysis_version),
+        reviewStatus: row.review_status, createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+    };
+}
 export class MemoryStorage {
     config;
     db = null;
@@ -71,6 +86,7 @@ export class MemoryStorage {
         this.db = db;
         if (config.retentionDays > 0) {
             const cutoff = new Date(Date.now() - config.retentionDays * 86400000).toISOString();
+            db.prepare('DELETE FROM memory_orbs WHERE timestamp < ?').run(cutoff);
             db.prepare('DELETE FROM memory_events WHERE timestamp < ?').run(cutoff);
         }
     }
@@ -116,6 +132,29 @@ export class MemoryStorage {
         const row = this.db?.prepare('SELECT * FROM memory_events WHERE id = ?').get(id);
         return row ? rowToEvent(row) : null;
     }
+    deleteEvent(id) {
+        if (!this.db)
+            return false;
+        try {
+            this.db.exec('BEGIN');
+            const rows = this.db.prepare('SELECT id, source_event_ids_json FROM memory_orbs').all();
+            for (const row of rows) {
+                const ids = parseJson(row.source_event_ids_json);
+                if (ids?.includes(id))
+                    this.db.prepare('DELETE FROM memory_orbs WHERE id = ?').run(row.id);
+            }
+            const deleted = Number(this.db.prepare('DELETE FROM memory_events WHERE id = ?').run(id).changes) > 0;
+            this.db.exec('COMMIT');
+            return deleted;
+        }
+        catch {
+            try {
+                this.db.exec('ROLLBACK');
+            }
+            catch { }
+            return false;
+        }
+    }
     listSessionEvents(sessionId) {
         const rows = this.db?.prepare('SELECT * FROM memory_events WHERE session_id = ? ORDER BY event_seq IS NULL, event_seq, timestamp').all(sessionId) ?? [];
         return rows.map(rowToEvent);
@@ -125,13 +164,91 @@ export class MemoryStorage {
         const rows = this.db?.prepare('SELECT * FROM memory_events ORDER BY timestamp DESC, rowid DESC LIMIT ?').all(safeLimit) ?? [];
         return rows.map(rowToEvent);
     }
+    saveOrb(orb) {
+        if (!this.config.enabled)
+            return { saved: false, reason: 'disabled' };
+        if (!this.config.analysisEnabled)
+            return { saved: false, reason: 'analysis_disabled' };
+        if (!this.db)
+            return { saved: false, reason: this.lastError ? 'unavailable' : 'closed' };
+        const dedupeKey = orb.sourceEventIds.slice().sort().join(',') + '|' + orb.analysisVersion;
+        try {
+            const result = this.db.prepare(`
+        INSERT OR IGNORE INTO memory_orbs (
+          id, dedupe_key, source_event_ids_json, session_id, actor, timestamp,
+          emotions_json, emotion_confidence, meaning, meaning_confidence, importance,
+          importance_reasons_json, core_memory_candidate, tags_json, related_memory_ids_json,
+          evidence_event_ids_json, analysis_method, analysis_version, review_status,
+          created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(orb.id, dedupeKey, json(orb.sourceEventIds) ?? '[]', orb.sessionId, orb.actor, orb.timestamp, json(orb.emotions) ?? '[]', orb.emotionConfidence, orb.meaning, orb.meaningConfidence, orb.importance, json(orb.importanceReasons) ?? '[]', orb.coreMemoryCandidate ? 1 : 0, json(orb.tags) ?? '[]', json(orb.relatedMemoryIds) ?? '[]', json(orb.evidenceEventIds) ?? '[]', orb.analysisMethod, orb.analysisVersion, orb.reviewStatus, orb.createdAt, orb.updatedAt);
+            return Number(result.changes) === 0 ? { saved: false, reason: 'duplicate' } : { saved: true };
+        }
+        catch (error) {
+            this.lastError = error instanceof Error ? error.name : 'database error';
+            return { saved: false, reason: 'unavailable' };
+        }
+    }
+    getOrb(id) {
+        const row = this.db?.prepare('SELECT * FROM memory_orbs WHERE id = ?').get(id);
+        return row ? rowToOrb(row) : null;
+    }
+    listOrbsForEvent(eventId) {
+        const rows = this.db?.prepare('SELECT * FROM memory_orbs ORDER BY timestamp').all() ?? [];
+        return rows.filter((row) => parseJson(row.source_event_ids_json)?.includes(eventId)).map(rowToOrb);
+    }
+    listSessionOrbs(sessionId) {
+        return (this.db?.prepare('SELECT * FROM memory_orbs WHERE session_id = ? ORDER BY timestamp').all(sessionId) ?? []).map(rowToOrb);
+    }
+    listOrbsByEmotion(emotion) {
+        return (this.db?.prepare('SELECT * FROM memory_orbs ORDER BY timestamp').all() ?? [])
+            .filter((row) => parseJson(row.emotions_json)?.includes(emotion)).map(rowToOrb);
+    }
+    listCoreMemoryCandidates(limit = 100) {
+        const safeLimit = Math.max(1, Math.min(1000, Math.floor(limit)));
+        return (this.db?.prepare('SELECT * FROM memory_orbs WHERE core_memory_candidate = 1 ORDER BY importance DESC, timestamp DESC LIMIT ?').all(safeLimit) ?? []).map(rowToOrb);
+    }
+    updateOrb(orb) {
+        if (!this.db)
+            return false;
+        try {
+            const result = this.db.prepare(`
+        UPDATE memory_orbs SET emotions_json = ?, emotion_confidence = ?, meaning = ?,
+        meaning_confidence = ?, importance = ?, importance_reasons_json = ?,
+        core_memory_candidate = ?, tags_json = ?, related_memory_ids_json = ?,
+        review_status = ?, updated_at = ? WHERE id = ?
+      `).run(json(orb.emotions) ?? '[]', orb.emotionConfidence, orb.meaning, orb.meaningConfidence, orb.importance, json(orb.importanceReasons) ?? '[]', orb.coreMemoryCandidate ? 1 : 0, json(orb.tags) ?? '[]', json(orb.relatedMemoryIds) ?? '[]', orb.reviewStatus, orb.updatedAt, orb.id);
+            return Number(result.changes) > 0;
+        }
+        catch {
+            return false;
+        }
+    }
+    deleteOrb(id) {
+        if (!this.db)
+            return false;
+        try {
+            return Number(this.db.prepare('DELETE FROM memory_orbs WHERE id = ?').run(id).changes) > 0;
+        }
+        catch {
+            return false;
+        }
+    }
     deleteSession(sessionId) {
         if (!this.db)
             return false;
         try {
-            return Number(this.db.prepare('DELETE FROM memory_events WHERE session_id = ?').run(sessionId).changes) > 0;
+            this.db.exec('BEGIN');
+            const changed = Number(this.db.prepare('DELETE FROM memory_events WHERE session_id = ?').run(sessionId).changes) > 0;
+            this.db.prepare('DELETE FROM memory_orbs WHERE session_id = ?').run(sessionId);
+            this.db.exec('COMMIT');
+            return changed;
         }
         catch {
+            try {
+                this.db.exec('ROLLBACK');
+            }
+            catch { }
             return false;
         }
     }
@@ -139,10 +256,17 @@ export class MemoryStorage {
         if (!this.db)
             return false;
         try {
+            this.db.exec('BEGIN');
+            this.db.prepare('DELETE FROM memory_orbs').run();
             this.db.prepare('DELETE FROM memory_events').run();
+            this.db.exec('COMMIT');
             return true;
         }
         catch {
+            try {
+                this.db.exec('ROLLBACK');
+            }
+            catch { }
             return false;
         }
     }
