@@ -6,6 +6,7 @@ import { initializeSchema } from './schema.js'
 import type { JsonValue, MemoryEvent } from './types.js'
 
 export type MemoryStats = {
+  pluginVersion: string
   enabled: boolean
   databaseStatus: 'ready' | 'disabled' | 'unavailable' | 'closed'
   eventCount: number
@@ -20,6 +21,7 @@ export type SaveEventResult = {
 const SENSITIVE_KEY = /password|passphrase|token|secret|api[_-]?key|authorization|cookie|credential/i
 const SENSITIVE_VALUE = /bearer\s+[a-z0-9._~+/=-]{8,}|(?:sk|ghp|github_pat|xox[baprs])-[a-z0-9_-]{8,}|\b(?:password|token|secret|api[_-]?key)\s*[:=]\s*\S+/i
 const REDACTED = '[REDACTED]'
+export const PLUGIN_VERSION = '0.3.0'
 
 function sanitize(value: JsonValue, key = ''): JsonValue {
   if (SENSITIVE_KEY.test(key)) return REDACTED
@@ -130,14 +132,14 @@ export class MemoryStorage {
     try { this.db.prepare('DELETE FROM memory_events').run(); return true } catch { return false }
   }
   getMemoryStats(): MemoryStats {
-    if (!this.config.enabled) return { enabled: false, databaseStatus: 'disabled', eventCount: 0, sessionCount: 0, lastSuccessfulWriteAt: this.lastSuccessfulWriteAt }
-    if (!this.db) return { enabled: true, databaseStatus: this.lastError ? 'unavailable' : 'closed', eventCount: 0, sessionCount: 0, lastSuccessfulWriteAt: this.lastSuccessfulWriteAt }
+    if (!this.config.enabled) return { pluginVersion: PLUGIN_VERSION, enabled: false, databaseStatus: 'disabled', eventCount: 0, sessionCount: 0, lastSuccessfulWriteAt: this.lastSuccessfulWriteAt }
+    if (!this.db) return { pluginVersion: PLUGIN_VERSION, enabled: true, databaseStatus: this.lastError ? 'unavailable' : 'closed', eventCount: 0, sessionCount: 0, lastSuccessfulWriteAt: this.lastSuccessfulWriteAt }
     try {
       const count = this.db.prepare('SELECT COUNT(*) AS count FROM memory_events').get()
       const sessions = this.db.prepare('SELECT COUNT(DISTINCT session_id) AS count FROM memory_events').get()
-      return { enabled: true, databaseStatus: 'ready', eventCount: Number(count?.count ?? 0), sessionCount: Number(sessions?.count ?? 0), lastSuccessfulWriteAt: this.lastSuccessfulWriteAt }
+      return { pluginVersion: PLUGIN_VERSION, enabled: true, databaseStatus: 'ready', eventCount: Number(count?.count ?? 0), sessionCount: Number(sessions?.count ?? 0), lastSuccessfulWriteAt: this.lastSuccessfulWriteAt }
     } catch {
-      return { enabled: true, databaseStatus: 'unavailable', eventCount: 0, sessionCount: 0, lastSuccessfulWriteAt: this.lastSuccessfulWriteAt }
+      return { pluginVersion: PLUGIN_VERSION, enabled: true, databaseStatus: 'unavailable', eventCount: 0, sessionCount: 0, lastSuccessfulWriteAt: this.lastSuccessfulWriteAt }
     }
   }
   close(): void {

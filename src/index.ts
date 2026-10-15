@@ -101,7 +101,7 @@ export function apply(root: HostContext, rawConfig?: unknown): void {
         schema: {
           type: 'object',
           properties: {
-            enabled: { type: 'boolean' }, databaseStatus: { type: 'string' },
+            pluginVersion: { type: 'string' }, enabled: { type: 'boolean' }, databaseStatus: { type: 'string' },
             eventCount: { type: 'integer' }, sessionCount: { type: 'integer' },
             lastSuccessfulWriteAt: { type: 'string' },
           },
@@ -113,6 +113,7 @@ export function apply(root: HostContext, rawConfig?: unknown): void {
       execute: async (): Promise<StatusResult> => {
         const stats = runtime.storage?.getMemoryStats()
         return {
+          pluginVersion: stats?.pluginVersion ?? '0.3.0',
           enabled: stats?.enabled ?? resolveMemoryConfig(rawConfig).enabled,
           databaseStatus: stats?.databaseStatus ?? 'unavailable',
           eventCount: stats?.eventCount ?? 0,

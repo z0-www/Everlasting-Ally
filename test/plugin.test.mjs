@@ -25,6 +25,7 @@ test('registers inside_memory_ping and unregisters it through the effect', async
   assert.deepEqual(value, { ok: true, plugin: 'everlasting-ally', message: 'hello' })
   assert.deepEqual(definition.output.render({}, value), [{ type: 'text', text: JSON.stringify(value) }])
   const status = await definitions.get('inside_memory_status').execute({})
+  assert.equal(status.pluginVersion, '0.3.0')
   assert.equal(status.enabled, false)
   assert.equal(status.databaseStatus, 'disabled')
   for (const cleanup of cleanups) cleanup?.()
