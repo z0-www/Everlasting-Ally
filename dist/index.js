@@ -1,3 +1,5 @@
+/** Minimal Everlasting Ally host facet. */
+import { MemoryCapture } from './memory/capture.js';
 const TOOL_NAME = 'inside_memory_ping';
 function normalizeMessage(args) {
     if (typeof args !== 'object' || args === null || Array.isArray(args))
@@ -6,7 +8,20 @@ function normalizeMessage(args) {
     return typeof message === 'string' && message.trim() ? message.trim() : 'Everlasting Ally is loaded.';
 }
 export const name = 'everlasting-ally';
+export function mountMemoryCapture(root) {
+    const capture = new MemoryCapture();
+    if (typeof root.on !== 'function')
+        return capture;
+    const dispose = root.on('session/event', (session, event) => {
+        capture.handleSessionEvent(session, event);
+    });
+    if (typeof dispose === 'function' && typeof root.effect === 'function') {
+        root.effect(() => dispose, 'everlasting-ally: session event listener');
+    }
+    return capture;
+}
 export function apply(root) {
+    mountMemoryCapture(root);
     root.inject(['tools'], (ctx) => {
         const unregister = ctx.tools.register({
             name: TOOL_NAME,

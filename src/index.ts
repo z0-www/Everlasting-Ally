@@ -1,4 +1,7 @@
 /** Minimal Everlasting Ally host facet. */
+import { MemoryCapture } from './memory/capture.js'
+import type { SessionEventLike, SessionLike } from './memory/types.js'
+
 type ToolResult = { ok: true; plugin: 'everlasting-ally'; message: string }
 type ToolContext = {
   tools: {
@@ -15,7 +18,11 @@ type ToolContext = {
   }
   effect(setup: () => (() => void) | void, label?: string): void
 }
-type HostContext = { inject(services: string[], callback: (context: ToolContext) => void): void }
+type HostContext = {
+  inject(services: string[], callback: (context: ToolContext) => void): void
+  on?: (event: string, listener: (session: SessionLike, event: SessionEventLike) => void) => (() => void) | void
+  effect?: (setup: () => (() => void) | void, label?: string) => void
+}
 const TOOL_NAME = 'inside_memory_ping'
 
 function normalizeMessage(args: unknown): string {
@@ -26,7 +33,20 @@ function normalizeMessage(args: unknown): string {
 
 export const name = 'everlasting-ally'
 
+export function mountMemoryCapture(root: HostContext): MemoryCapture {
+  const capture = new MemoryCapture()
+  if (typeof root.on !== 'function') return capture
+  const dispose = root.on('session/event', (session, event) => {
+    capture.handleSessionEvent(session, event)
+  })
+  if (typeof dispose === 'function' && typeof root.effect === 'function') {
+    root.effect(() => dispose, 'everlasting-ally: session event listener')
+  }
+  return capture
+}
+
 export function apply(root: HostContext): void {
+  mountMemoryCapture(root)
   root.inject(['tools'], (ctx) => {
     const unregister = ctx.tools.register({
       name: TOOL_NAME,

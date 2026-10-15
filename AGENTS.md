@@ -1,14 +1,14 @@
 # Everlasting Ally development guide
 
-This repository currently implements only the v0.1 DSH host facet and the
-inside_memory_ping health tool. Do not claim memory storage, emotion analysis,
-personality continuity, or a desktop UI until those features have been added and
-tested.
+This repository implements the v0.1 DSH host facet, the inside_memory_ping health
+tool, and a v0.2 in-memory session event capture layer. It does not persist
+events and does not implement emotion analysis, personality continuity, or a
+desktop UI.
 
 Commands:
 
 - npm ci installs the locked development dependencies.
-- npm test compiles TypeScript and runs the manifest and tool registration tests.
+- npm test compiles TypeScript and runs manifest, tool registration, and event capture tests.
 - npm run build writes the loadable JavaScript host facet to dist/.
 
 The plugin follows the public tool registration shape verified in the

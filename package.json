@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
-  "exports": { ".": "./dist/index.js" },
+  "exports": { ".": "./dist/index.js", "./memory": "./dist/memory/index.js" },
   "files": ["dist", "dsh-plugin.json", "everlasting-ally.bundle.yml", "README.md", "AGENTS.md", "LICENSE"],
   "dsh": { "bundle": { "patch": "./everlasting-ally.bundle.yml" } },
   "scripts": {

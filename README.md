@@ -16,6 +16,19 @@ AI 描述为具有人类意识或真实情绪，也不会为了营造人格而�
 
 记忆数据库、情绪标签、反思调用、人格系统和前端页面尚未实现。
 
+## v0.2 事件采集基础
+
+第二阶段目前只增加数据结构和会话事件监听，不做持久化：
+
+- src/memory/types.ts 定义双方消息、工具调用、工具结果和回合结束事件。
+- src/memory/capture.ts 监听公开的 session/event 流，并保留内存中的结构化事件。
+- 用户事件标记为 user，DS 消息标记为 assistant，工具证据标记为 tool。
+- 工具调用和同一会话中的工具结果通过 callId 关联。
+- 未知事件、来源不明事件和角色冲突事件会跳过；缺少内容的已知事件标记为 partial。
+- 情绪、意义、重要性和关联记忆字段只作为空字段预留，不会被自动推断。
+
+本阶段没有 SQLite、状态工具、Prompt 注入、隐私过滤或第三方上传。当前内存事件会随插件进程结束而消失。
+
 ## 本地开发
 
 需要 Node.js 22 或更高版本：
@@ -43,9 +56,9 @@ npm test 会先将 TypeScript 编译到 dist/，然后运行工具注册测试�
 
 - 本云端只验证了 Node.js 构建、manifest 解析和模拟 DSH tool registry；没有声称已在
   DSH Desktop 中加载成功。
-- 当前插件没有持久化状态，也不会读取聊天记录或上传数据。
-- 下一阶段可在独立模块中定义记忆存储接口，再选择 SQLite 实现；同时增加真实 DSH
-  Desktop smoke test，并在确认 API 后逐步加入双向事件记录和反思流程。
+- 云端测试覆盖模拟的 DSH session/event 监听；真实 DSH Desktop 事件字段仍需在 Windows
+  环境中进行 smoke test。
+- 后续阶段可在当前 MemoryEvent 接口上增加 SQLite 存储，再单独设计隐私开关和删除能力。
 
 ## 参考
 
