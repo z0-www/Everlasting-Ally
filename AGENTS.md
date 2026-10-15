@@ -2,8 +2,8 @@
 
 This repository implements the v0.1 DSH host facet, v0.2 session event capture,
 v0.3 local SQLite persistence with privacy controls, and v0.4 local rule based
-memory orb analysis. It does not implement personality continuity, vector
-search, prompt injection, or a desktop UI.
+memory orb analysis, and v0.5 local deterministic recall. It does not implement
+personality continuity, vector search, prompt injection, or a desktop UI.
 
 Commands:
 

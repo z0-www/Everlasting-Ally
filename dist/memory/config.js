@@ -24,6 +24,7 @@ export function resolveMemoryConfig(rawConfig) {
         captureAssistantMessages: booleanValue(memory.captureAssistantMessages, true),
         captureToolEvents: booleanValue(memory.captureToolEvents, true),
         analysisEnabled: booleanValue(memory.analysisEnabled, false),
+        recallEnabled: booleanValue(memory.recallEnabled, false),
         maxEventBytes: positiveInteger(memory.maxEventBytes, DEFAULT_MAX_EVENT_BYTES),
         retentionDays: typeof memory.retentionDays === 'number' && Number.isInteger(memory.retentionDays) && memory.retentionDays >= 0
             ? memory.retentionDays : 0,

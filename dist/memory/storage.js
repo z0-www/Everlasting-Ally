@@ -5,7 +5,7 @@ import { initializeSchema } from './schema.js';
 const SENSITIVE_KEY = /password|passphrase|token|secret|api[_-]?key|authorization|cookie|credential/i;
 const SENSITIVE_VALUE = /bearer\s+[a-z0-9._~+/=-]{8,}|(?:sk|ghp|github_pat|xox[baprs])-[a-z0-9_-]{8,}|\b(?:password|token|secret|api[_-]?key)\s*[:=]\s*\S+/i;
 const REDACTED = '[REDACTED]';
-export const PLUGIN_VERSION = '0.4.0';
+export const PLUGIN_VERSION = '0.5.0';
 function sanitize(value, key = '') {
     if (SENSITIVE_KEY.test(key))
         return REDACTED;
@@ -199,6 +199,10 @@ export class MemoryStorage {
     }
     listSessionOrbs(sessionId) {
         return (this.db?.prepare('SELECT * FROM memory_orbs WHERE session_id = ? ORDER BY timestamp').all(sessionId) ?? []).map(rowToOrb);
+    }
+    listRecentOrbs(limit = 100) {
+        const safeLimit = Math.max(1, Math.min(1000, Math.floor(limit)));
+        return (this.db?.prepare('SELECT * FROM memory_orbs ORDER BY timestamp DESC, rowid DESC LIMIT ?').all(safeLimit) ?? []).map(rowToOrb);
     }
     listOrbsByEmotion(emotion) {
         return (this.db?.prepare('SELECT * FROM memory_orbs ORDER BY timestamp').all() ?? [])

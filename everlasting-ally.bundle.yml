@@ -5,3 +5,4 @@
       config:
         memory:
           enabled: false
+          recallEnabled: false

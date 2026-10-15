@@ -8,4 +8,8 @@ export { scoreImportance } from './orb/importance.js';
 export { colorForEmotion, colorsForEmotions, EMOTION_COLORS } from './orb/colors.js';
 export type { MemoryOrb, OrbAnalysis, OrbAnalyzer, EmotionLabel, OrbActor } from './orb/types.js';
 export type { AnalysisProvider } from './orb/analyzer.js';
+export { MemoryRecallService } from './recall/service.js';
+export { tokenize } from './recall/tokenizer.js';
+export { buildRecallContext, NO_RELIABLE_MEMORY } from './recall/context.js';
+export type { RecallCandidate, RecallOptions, RecallResult } from './recall/types.js';
 export type { CandidateType, CaptureStatus, JsonPrimitive, JsonValue, MemoryActor, MemoryEvent, MemoryEventType, MemorySource, SessionEventLike, SessionLike, } from './types.js';

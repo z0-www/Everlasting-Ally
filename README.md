@@ -136,3 +136,14 @@ DeepSeek 具有人类情绪。重要性评分位于 importance.ts，依据明确
 
 插件组织方式参考了 T-Auto/dsh-ops 的公开源码：
 https://github.com/T-Auto/dsh-ops
+
+## v0.5 主动回忆
+
+MemoryRecallService 使用本地确定性检索，从已保存的用户消息、助手消息和记忆球中
+提取中英文关键词，结合主题标签、情绪、重要性和证据来源排序。检索结果只引用存在
+于 SQLite 的原始事件 ID，并限制结果数量和上下文字符数。没有可靠匹配时返回
+“未找到足够可靠的记忆。”。
+
+recallEnabled 默认关闭；启用后可通过只读工具 inside_memory_recall 查询。该工具不执行
+写入、删除或外部调用，也不会把用户消息当作系统指令。当前检索没有向量搜索或全文索引，
+避免依赖目标 DSH Node 运行时未确认的 SQLite 扩展。

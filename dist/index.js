@@ -3,6 +3,7 @@ import { MemoryCapture } from './memory/capture.js';
 import { resolveMemoryConfig } from './memory/config.js';
 import { MemoryStorage } from './memory/storage.js';
 import { MemoryOrbService } from './memory/orb/service.js';
+import { MemoryRecallService } from './memory/recall/service.js';
 const TOOL_NAME = 'inside_memory_ping';
 function normalizeMessage(args) {
     if (typeof args !== 'object' || args === null || Array.isArray(args))
@@ -89,7 +90,7 @@ export function apply(root, rawConfig) {
             execute: async () => {
                 const stats = runtime.storage?.getMemoryStats();
                 return {
-                    pluginVersion: stats?.pluginVersion ?? '0.4.0',
+                    pluginVersion: stats?.pluginVersion ?? '0.5.0',
                     enabled: stats?.enabled ?? resolveMemoryConfig(rawConfig).enabled,
                     databaseStatus: stats?.databaseStatus ?? 'unavailable',
                     eventCount: stats?.eventCount ?? 0,
@@ -99,6 +100,43 @@ export function apply(root, rawConfig) {
             },
         });
         ctx.effect(() => statusUnregister, 'everlasting-ally: status tool registration');
+        const recallUnregister = ctx.tools.register({
+            name: 'inside_memory_recall',
+            description: 'Search enabled local memories and return only evidence-backed historical context.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: { type: 'string' },
+                    maxResults: { type: 'integer', minimum: 1, maximum: 10 },
+                    maxChars: { type: 'integer', minimum: 100, maximum: 4000 },
+                },
+                required: ['query'],
+                additionalProperties: false,
+            },
+            output: {
+                schema: {
+                    type: 'object',
+                    properties: { found: { type: 'boolean' }, summary: { type: 'string' }, evidenceEventIds: { type: 'array' } },
+                    required: ['found', 'summary', 'evidenceEventIds'],
+                    additionalProperties: false,
+                },
+                render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+            },
+            execute: async (args) => {
+                const input = typeof args === 'object' && args !== null ? args : {};
+                const query = typeof input.query === 'string' ? input.query : '';
+                if (!runtime.storage || !runtime.storage.config.recallEnabled) {
+                    return { found: false, summary: '未找到足够可靠的记忆。记忆检索未启用。', evidenceEventIds: [] };
+                }
+                const recall = new MemoryRecallService(runtime.storage);
+                const result = recall.search(query, {
+                    maxResults: typeof input.maxResults === 'number' ? input.maxResults : 5,
+                    maxChars: typeof input.maxChars === 'number' ? input.maxChars : 2000,
+                });
+                return { found: result.found, summary: result.summary, evidenceEventIds: result.evidenceEventIds };
+            },
+        });
+        ctx.effect(() => recallUnregister, 'everlasting-ally: recall tool registration');
     });
 }
 export { TOOL_NAME };

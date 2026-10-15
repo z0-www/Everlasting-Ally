@@ -17,7 +17,7 @@ export type SaveOrbResult = {
     saved: boolean;
     reason?: 'disabled' | 'analysis_disabled' | 'unavailable' | 'closed' | 'duplicate';
 };
-export declare const PLUGIN_VERSION = "0.4.0";
+export declare const PLUGIN_VERSION = "0.5.0";
 export declare class MemoryStorage {
     readonly config: MemoryConfig;
     private db;
@@ -34,6 +34,7 @@ export declare class MemoryStorage {
     getOrb(id: string): MemoryOrb | null;
     listOrbsForEvent(eventId: string): MemoryOrb[];
     listSessionOrbs(sessionId: string): MemoryOrb[];
+    listRecentOrbs(limit?: number): MemoryOrb[];
     listOrbsByEmotion(emotion: string): MemoryOrb[];
     listCoreMemoryCandidates(limit?: number): MemoryOrb[];
     updateOrb(orb: MemoryOrb): boolean;
