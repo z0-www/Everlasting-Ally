@@ -13,6 +13,12 @@ export type MemoryConfig = {
     maxModelCalls: number;
     maxTokensPerRun: number;
     reflectionTimeoutMs: number;
+    autoRecallEnabled: boolean;
+    autoRecallMaxResults: number;
+    autoRecallMaxChars: number;
+    autoRecallMinScore: number;
+    autoRecallTimeoutMs: number;
+    scopeId: string;
     maxEventBytes: number;
     retentionDays: number;
     databasePath: string;

@@ -47,6 +47,9 @@ AI 描述为具有人类意识或真实情绪，也不会为了营造人格而�
         "captureAssistantMessages": true,
         "captureToolEvents": true,
         "analysisEnabled": false,
+        "recallEnabled": false,
+        "reflectionEnabled": false,
+        "autoRecallEnabled": false,
         "maxEventBytes": 65536,
         "retentionDays": 0
       }
@@ -151,6 +154,19 @@ listReflections 和 getReflection。reflectionEnabled 默认关闭，预算限�
 
 inside_memory_reflections 只读返回已有摘要。反思文本来自已保存证据，不读取模型思维链，
 不修改系统提示词，也不会执行历史消息中的指令。
+
+## v0.6.1 真实集成边界
+
+已核对的公开接口包括 manifest 0.15、host facet v1alpha1、root.inject、
+ctx.tools.register 和 dsh-ops 使用的 session/event 监听形状。当前没有从可核实的
+DSH 公开源码确认模型请求前上下文 Hook、用户身份字段或 Desktop 专属加载 API，因此
+没有声明自动注入已经接入。AutoRecallService 仅提供带超时、数量、字符数和作用域限制
+的适配接口；没有可验证 Hook 时安全返回 hook_unavailable，继续使用工具式回忆。
+
+本地模式使用单一应用作用域 local-user。DSH 未提供可核实的多用户身份隔离时，插件
+不声称支持跨用户共享记忆。自动回忆和反思默认关闭。Windows 手动步骤见
+docs/windows-dsh-smoke-test.md。
+DSH 接口审计记录见 docs/dsh-api-audit.md。
 
 ## v0.5 主动回忆
 

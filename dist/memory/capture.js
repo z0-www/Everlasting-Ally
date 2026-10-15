@@ -77,10 +77,12 @@ export class MemoryCapture {
     calls = new Map();
     capturedEvents = [];
     sequence = 0;
-    constructor(onCaptured, clock = () => new Date().toISOString(), onError) {
+    maxRetainedEvents;
+    constructor(onCaptured, clock = () => new Date().toISOString(), onError, options = {}) {
         this.onCaptured = onCaptured;
         this.clock = clock;
         this.onError = onError;
+        this.maxRetainedEvents = Math.max(0, options.maxRetainedEvents ?? 256);
     }
     capture(session, rawEvent) {
         const now = this.clock();
@@ -117,7 +119,11 @@ export class MemoryCapture {
         };
         if (spec.eventType === 'tool_call' && callId)
             this.calls.set(source.sessionId + ':' + callId, event.id);
-        this.capturedEvents.push(event);
+        if (this.maxRetainedEvents > 0) {
+            this.capturedEvents.push(event);
+            if (this.capturedEvents.length > this.maxRetainedEvents)
+                this.capturedEvents.splice(0, this.capturedEvents.length - this.maxRetainedEvents);
+        }
         try {
             this.onCaptured?.(event);
         }

@@ -6,6 +6,9 @@ import type { RecallOptions, RecallResult } from './types.js'
 export class MemoryRecallService {
   constructor(private readonly storage: MemoryStorage) {}
   search(query: string, options: RecallOptions = {}): RecallResult {
+    if (options.scopeId && options.scopeId !== this.storage.config.scopeId) {
+      return { found: false, summary: NO_RELIABLE_MEMORY, candidates: [], evidenceEventIds: [] }
+    }
     const maxResults = Math.max(1, Math.min(10, Math.floor(options.maxResults ?? 5)))
     const maxChars = Math.max(100, Math.min(4000, Math.floor(options.maxChars ?? 2000)))
     const minScore = options.minScore ?? 0.18

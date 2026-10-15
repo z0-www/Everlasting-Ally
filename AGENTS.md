@@ -24,6 +24,10 @@ Reflection is disabled by default and only runs through trusted programmatic
 interfaces. Never expose raw event text in logs or add an automatic background
 reflection loop.
 
+The DSH request-before-model context hook and multi-user identity fields are not
+verified. Keep auto recall behind the adapter and report hook_unavailable when
+no supported host extension exists.
+
 The plugin follows the public tool registration shape verified in the
 T-Auto/dsh-ops source: ctx.inject(['tools'], ...) and
 ctx.tools.register({ name, description, parameters, output, execute }).

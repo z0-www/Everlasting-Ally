@@ -5,7 +5,7 @@ import { initializeSchema } from './schema.js';
 const SENSITIVE_KEY = /password|passphrase|token|secret|api[_-]?key|authorization|cookie|credential/i;
 const SENSITIVE_VALUE = /bearer\s+[a-z0-9._~+/=-]{8,}|(?:sk|ghp|github_pat|xox[baprs])-[a-z0-9_-]{8,}|\b(?:password|token|secret|api[_-]?key)\s*[:=]\s*\S+/i;
 const REDACTED = '[REDACTED]';
-export const PLUGIN_VERSION = '0.6.0';
+export const PLUGIN_VERSION = '0.6.1';
 function sanitize(value, key = '') {
     if (SENSITIVE_KEY.test(key))
         return REDACTED;
@@ -103,24 +103,35 @@ export class MemoryStorage {
         }
     }
     get available() { return this.db !== null && this.lastError === null; }
+    prepareEvent(event) {
+        if (!this.config.enabled)
+            return null;
+        if (event.actor === 'user' && !this.config.captureUserMessages)
+            return null;
+        if (event.actor === 'assistant' && !this.config.captureAssistantMessages)
+            return null;
+        if (event.actor === 'tool' && !this.config.captureToolEvents)
+            return null;
+        const content = event.content === null ? null : sanitize(event.content);
+        const contentJson = json(content);
+        if (contentJson === null && event.content !== null)
+            return null;
+        const tooLarge = contentJson !== null && new TextEncoder().encode(contentJson).byteLength > this.config.maxEventBytes;
+        return { ...event, content: tooLarge ? null : content, captureStatus: tooLarge ? 'partial' : event.captureStatus };
+    }
     saveEvent(event) {
         if (!this.config.enabled)
             return { saved: false, reason: 'disabled' };
         if (!this.db)
             return { saved: false, reason: this.lastError ? 'unavailable' : 'closed' };
-        if (event.actor === 'user' && !this.config.captureUserMessages)
+        const prepared = this.prepareEvent(event);
+        if (!prepared)
             return { saved: false, reason: 'filtered' };
-        if (event.actor === 'assistant' && !this.config.captureAssistantMessages)
-            return { saved: false, reason: 'filtered' };
-        if (event.actor === 'tool' && !this.config.captureToolEvents)
-            return { saved: false, reason: 'filtered' };
-        const content = event.content === null ? null : sanitize(event.content);
+        const content = prepared.content;
         const contentJson = json(content);
         const tooLarge = contentJson !== null && new TextEncoder().encode(contentJson).byteLength > this.config.maxEventBytes;
-        const storedStatus = tooLarge ? 'partial' : event.captureStatus;
-        const storedContent = tooLarge ? null : contentJson;
-        if (storedContent === null && event.content !== null && contentJson === null)
-            return { saved: false, reason: 'filtered' };
+        const storedStatus = prepared.captureStatus;
+        const storedContent = contentJson;
         try {
             const result = this.db.prepare(`
         INSERT OR IGNORE INTO memory_events (
@@ -129,11 +140,11 @@ export class MemoryStorage {
           data_version, candidate_type, emotions_json, meaning, importance, confidence,
           memory_type, related_memories_json
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(event.id, event.sessionId, event.eventSeq, event.timestamp, event.actor, event.eventType, storedContent, json(event.source), event.callId, json(event.relatedEventIds) ?? '[]', storedStatus, event.createdAt, 1, event.candidateType ?? null, json(event.emotions), event.meaning, event.importance, event.confidence, event.memoryType, json(event.relatedMemories));
+      `).run(prepared.id, prepared.sessionId, prepared.eventSeq, prepared.timestamp, prepared.actor, prepared.eventType, storedContent, json(prepared.source), prepared.callId, json(prepared.relatedEventIds) ?? '[]', storedStatus, prepared.createdAt, 1, prepared.candidateType ?? null, json(prepared.emotions), prepared.meaning, prepared.importance, prepared.confidence, prepared.memoryType, json(prepared.relatedMemories));
             if (Number(result.changes) === 0)
                 return { saved: false, reason: 'duplicate' };
             this.lastSuccessfulWriteAt = new Date().toISOString();
-            return { saved: true };
+            return { saved: true, storedEvent: prepared };
         }
         catch (error) {
             this.lastError = error instanceof Error ? error.name : 'database error';

@@ -14,4 +14,6 @@ export { buildRecallContext, NO_RELIABLE_MEMORY } from './recall/context.js';
 export type { RecallCandidate, RecallOptions, RecallResult } from './recall/types.js';
 export { ReflectionService, LocalReflectionAnalyzer, createUnavailableReflectionProvider } from './reflection/index.js';
 export type { ReflectionRecord, ReflectionBudget, ReflectionAnalyzer, ReflectionProvider } from './reflection/index.js';
+export { AutoRecallService } from './auto-recall/index.js';
+export type { AutoRecallConfig, AutoRecallInput, AutoRecallResult, ContextExtension } from './auto-recall/index.js';
 export type { CandidateType, CaptureStatus, JsonPrimitive, JsonValue, MemoryActor, MemoryEvent, MemoryEventType, MemorySource, SessionEventLike, SessionLike, } from './types.js';

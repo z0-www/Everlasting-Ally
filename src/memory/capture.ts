@@ -12,6 +12,7 @@ import type { MemorySource } from './types.js'
 export type CaptureClock = () => string
 export type MemoryEventHandler = (event: MemoryEvent) => void
 export type CaptureErrorHandler = (error: unknown) => void
+export type CaptureOptions = { maxRetainedEvents?: number }
 
 type EventSpec = {
   actor: MemoryActor
@@ -100,12 +101,16 @@ export class MemoryCapture {
   private readonly calls = new Map<string, string>()
   private readonly capturedEvents: MemoryEvent[] = []
   private sequence = 0
+  private readonly maxRetainedEvents: number
 
   constructor(
     private readonly onCaptured?: MemoryEventHandler,
     private readonly clock: CaptureClock = () => new Date().toISOString(),
     private readonly onError?: CaptureErrorHandler,
-  ) {}
+    options: CaptureOptions = {},
+  ) {
+    this.maxRetainedEvents = Math.max(0, options.maxRetainedEvents ?? 256)
+  }
 
   capture(session: SessionLike, rawEvent: SessionEventLike): MemoryEvent | null {
     const now = this.clock()
@@ -139,7 +144,10 @@ export class MemoryCapture {
       relatedMemories: null,
     }
     if (spec.eventType === 'tool_call' && callId) this.calls.set(source.sessionId + ':' + callId, event.id)
-    this.capturedEvents.push(event)
+    if (this.maxRetainedEvents > 0) {
+      this.capturedEvents.push(event)
+      if (this.capturedEvents.length > this.maxRetainedEvents) this.capturedEvents.splice(0, this.capturedEvents.length - this.maxRetainedEvents)
+    }
     try {
       this.onCaptured?.(event)
     } catch (error) {

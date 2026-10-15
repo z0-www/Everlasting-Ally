@@ -9,3 +9,4 @@ export { MemoryRecallService } from './recall/service.js';
 export { tokenize } from './recall/tokenizer.js';
 export { buildRecallContext, NO_RELIABLE_MEMORY } from './recall/context.js';
 export { ReflectionService, LocalReflectionAnalyzer, createUnavailableReflectionProvider } from './reflection/index.js';
+export { AutoRecallService } from './auto-recall/index.js';

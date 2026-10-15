@@ -33,6 +33,13 @@ export function resolveMemoryConfig(rawConfig) {
         maxModelCalls: positiveInteger(memory.maxModelCalls, 0),
         maxTokensPerRun: positiveInteger(memory.maxTokensPerRun, 0),
         reflectionTimeoutMs: positiveInteger(memory.reflectionTimeoutMs, 5000),
+        autoRecallEnabled: booleanValue(memory.autoRecallEnabled, false),
+        autoRecallMaxResults: positiveInteger(memory.autoRecallMaxResults, 3),
+        autoRecallMaxChars: positiveInteger(memory.autoRecallMaxChars, 1200),
+        autoRecallMinScore: typeof memory.autoRecallMinScore === 'number' && memory.autoRecallMinScore >= 0
+            ? Math.min(1, memory.autoRecallMinScore) : 0.18,
+        autoRecallTimeoutMs: positiveInteger(memory.autoRecallTimeoutMs, 500),
+        scopeId: typeof memory.scopeId === 'string' && memory.scopeId.trim() ? memory.scopeId : 'local-user',
         maxEventBytes: positiveInteger(memory.maxEventBytes, DEFAULT_MAX_EVENT_BYTES),
         retentionDays: typeof memory.retentionDays === 'number' && Number.isInteger(memory.retentionDays) && memory.retentionDays >= 0
             ? memory.retentionDays : 0,

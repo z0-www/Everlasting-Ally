@@ -12,6 +12,7 @@ export type MemoryStats = {
 };
 export type SaveEventResult = {
     saved: boolean;
+    storedEvent?: MemoryEvent;
     reason?: 'disabled' | 'filtered' | 'too_large' | 'unavailable' | 'closed' | 'duplicate';
 };
 export type SaveOrbResult = {
@@ -22,7 +23,7 @@ export type SaveReflectionResult = {
     saved: boolean;
     reason?: 'disabled' | 'reflection_disabled' | 'unavailable' | 'closed' | 'duplicate';
 };
-export declare const PLUGIN_VERSION = "0.6.0";
+export declare const PLUGIN_VERSION = "0.6.1";
 export declare class MemoryStorage {
     readonly config: MemoryConfig;
     private db;
@@ -30,6 +31,7 @@ export declare class MemoryStorage {
     private lastSuccessfulWriteAt;
     constructor(config: MemoryConfig);
     get available(): boolean;
+    prepareEvent(event: MemoryEvent): MemoryEvent | null;
     saveEvent(event: MemoryEvent): SaveEventResult;
     getEvent(id: string): MemoryEvent | null;
     deleteEvent(id: string): boolean;

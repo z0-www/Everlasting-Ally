@@ -13,6 +13,7 @@ export type RecallOptions = {
     maxResults?: number;
     maxChars?: number;
     minScore?: number;
+    scopeId?: string;
 };
 export type RecallResult = {
     found: boolean;

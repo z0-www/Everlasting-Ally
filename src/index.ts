@@ -69,7 +69,7 @@ export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): Memo
   const reflectionService = storage ? new ReflectionService(storage, reflectionBudget) : null
   const capture = new MemoryCapture((event) => {
     const result = storage?.saveEvent(event)
-    if (result?.saved) orbService?.enqueue(event)
+    if (result?.saved && result.storedEvent) orbService?.enqueue(result.storedEvent)
   })
   if (typeof root.on !== 'function') return { capture, storage, orbService, reflectionService }
   const dispose = root.on('session/event', (session, event) => {
@@ -135,7 +135,7 @@ export function apply(root: HostContext, rawConfig?: unknown): void {
       execute: async (): Promise<StatusResult> => {
         const stats = runtime.storage?.getMemoryStats()
         return {
-          pluginVersion: stats?.pluginVersion ?? '0.6.0',
+          pluginVersion: stats?.pluginVersion ?? '0.6.1',
           enabled: stats?.enabled ?? resolveMemoryConfig(rawConfig).enabled,
           databaseStatus: stats?.databaseStatus ?? 'unavailable',
           eventCount: stats?.eventCount ?? 0,
