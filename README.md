@@ -25,3 +25,7 @@ The implementation uses Node 24's built-in `node:sqlite`, so no external model A
 ## Roleplay memory MVP
 
 Run `npm run demo:roleplay` to execute a real SQLite persistence demo: it creates the fictional mage 艾琳, stores a confirmed rune-stone event, closes and reopens the database, and retrieves the event by ID. Roleplay events are scoped by world, session, branch, and character; only confirmed events are recalled. This is a local MVP and does not claim Windows DSH integration.
+
+## 角色记忆管理
+
+`npm run roleplay:manage -- source EVENT_ID` 查看来源；`ROLEPLAY_DB=path npm run roleplay:manage -- list '{"worldId":"...","storySessionId":"...","branchId":"...","characterId":"..."}'` 查看已确认记忆。更正流程使用 `correct EVENT_ID 'replacement|reason|sourceId'` 后再 `confirm-correction ID`；删除必须设置 `ROLEPLAY_CONFIRM=yes`。`npm run demo:emotional` 会演示争执、可审计更正、重启恢复和上下文预览。

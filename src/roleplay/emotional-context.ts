@@ -1,0 +1,2 @@
+import {CharacterProfile,RelationshipState,StoryEvent,EmotionalConversationContext} from './types.js';
+export function buildEmotionalConversationContext(character:CharacterProfile,scene:string,events:StoryEvent[],relationships:RelationshipState[],style=character.communicationStyle):EmotionalConversationContext{return {characterId:character.characterId,scene,confirmedEvents:events.filter(e=>e.canonicalStatus==='confirmed').slice(-5),relationships,style,uncertainty:events.length?'仅包含有来源的虚构剧情；情绪是叙事状态。':'没有找到可靠历史，避免把新创作当作过去事实。'}}
