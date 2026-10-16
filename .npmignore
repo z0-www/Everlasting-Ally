@@ -1,0 +1,4 @@
+dist/test/
+src/test/
+*.sqlite
+*.sqlite-*
