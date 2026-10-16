@@ -37,3 +37,7 @@ Windows 新手请从 [docs/WINDOWS-START-HERE.zh-CN.md](docs/WINDOWS-START-HERE.
 ## Memory-to-Dialogue Bridge
 
 `npm run demo:dialogue` runs a real SQLite dialogue-memory selection demo. The bridge is disabled by default, selects only confirmed relevant evidence, deduplicates source events, enforces a context budget, and reports `hook_unavailable`; it does not claim that a DSH model received or used the preview.
+
+## Companion and roleplay MVP
+
+`npm run demo:companion` demonstrates the unified `ConversationModeService`: a fictional role can retrieve its confirmed story events, another character cannot, and assistant mode excludes fictional memories. Roleplay and companion context are local previews; no DSH request hook is claimed.
