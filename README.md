@@ -13,3 +13,7 @@ npm test
 ```
 
 The implementation uses Node 24's built-in `node:sqlite`, so no external model API key is needed. `ContinuityService` exposes profile/evidence/proposal/approval/rejection/revocation/preferences/reset and bounded context-preview operations. Use a trusted host identity for `scopeId`; this package does not provide network authentication or claim multi-user identity isolation.
+
+## v0.8 roleplay layer
+
+`src/roleplay` adds isolated character profiles, worlds, story branches/scenes, sessions, relationships, and bounded context previews. Roleplay mode is explicit and inactive sessions return no roleplay context. Fictional records are scoped by world/story/branch and are never promoted to real-user memory. Relationship records require source event IDs. The DSH pre-request hook remains unverified, so no automatic injection is claimed.
