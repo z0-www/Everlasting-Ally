@@ -41,3 +41,7 @@ Windows 新手请从 [docs/WINDOWS-START-HERE.zh-CN.md](docs/WINDOWS-START-HERE.
 ## Companion and roleplay MVP
 
 `npm run demo:companion` demonstrates the unified `ConversationModeService`: a fictional role can retrieve its confirmed story events, another character cannot, and assistant mode excludes fictional memories. Roleplay and companion context are local previews; no DSH request hook is claimed.
+
+## Independent verification
+
+The continuity verification report and machine-readable results are in [`docs/verification/`](docs/verification/). The implementation commit, commands, test count, SQLite restart result, isolation result, and DSH limitations are recorded there for an independent reviewer.

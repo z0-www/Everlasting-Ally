@@ -1,0 +1,17 @@
+{
+  "implementationCommit": "0f0343d31f89e0109837c33781ff5ac6f527a699",
+  "branch": "feat/roleplay-continuity-verified",
+  "runtime": "Node.js 24",
+  "commands": {
+    "npm_config_cache=/tmp/npm-cache npm ci": "pass",
+    "npm run build": "pass",
+    "npm test": {"status":"pass","tests":16},
+    "npm run demo:roleplay-continuity": "pass"
+  },
+  "sqliteRestart": "pass",
+  "characterIsolation": "pass",
+  "correctionAndSupersession": "pass",
+  "assistantFictionIsolation": "pass",
+  "dshWindowsDesktop": "not_verified",
+  "dshRequestHook": "unavailable"
+}
