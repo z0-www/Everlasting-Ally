@@ -1,0 +1,2 @@
+import {DialogueMemoryItem,DialogueQuery} from './types.js';import {DialogueMemorySelector} from './selector.js';
+export function compareRetrieval(items:DialogueMemoryItem[],q:DialogueQuery){const selected=new DialogueMemorySelector().select(items,q);return {withoutMemory:{items:0,chars:0},withMemory:{items:selected.length,chars:selected.reduce((n,x)=>n+x.content.length,0),sources:selected.flatMap(x=>x.sourceEventIds),irrelevant:selected.filter(x=>x.relevance<.2).length},modelQuality:'not_evaluated_without_model_provider'}}

@@ -33,3 +33,7 @@ Run `npm run demo:roleplay` to execute a real SQLite persistence demo: it create
 ## Windows 验收
 
 Windows 新手请从 [docs/WINDOWS-START-HERE.zh-CN.md](docs/WINDOWS-START-HERE.zh-CN.md) 开始。当前仓库可验证角色记忆 MVP；v0.6.1 的 `MemoryStorage` 等模块和真实 DSH Desktop Hook 不在此代码快照中，详见 [docs/ACCEPTANCE-REPORT.zh-CN.md](docs/ACCEPTANCE-REPORT.zh-CN.md)。
+
+## Memory-to-Dialogue Bridge
+
+`npm run demo:dialogue` runs a real SQLite dialogue-memory selection demo. The bridge is disabled by default, selects only confirmed relevant evidence, deduplicates source events, enforces a context budget, and reports `hook_unavailable`; it does not claim that a DSH model received or used the preview.
