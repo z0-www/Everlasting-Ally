@@ -1,0 +1,10 @@
+# Optional bundle row for DSH profiles that use the standard Cordis bundle patch.
+- insert:
+    - id: everlasting-ally
+      name: everlasting-ally
+      config:
+        memory:
+          enabled: false
+          recallEnabled: false
+          reflectionEnabled: false
+          autoRecallEnabled: false

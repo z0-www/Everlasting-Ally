@@ -1,0 +1,1 @@
+import {MemoryStorage} from '../dist/memory/storage.js';import {resolveMemoryConfig} from '../dist/memory/config.js';const s=new MemoryStorage(resolveMemoryConfig({memory:{enabled:true,databasePath:process.argv[2]}}));const ids=s.listSessionEvents('real-session').map(x=>x.id);console.log(ids.join(','));s.close();
