@@ -3,7 +3,8 @@
 - Base branch: `feat/companion-roleplay-mvp`
 - Development branch: `feat/roleplay-continuity-verified`
 - Implementation commit: `0f0343d31f89e0109837c33781ff5ac6f527a699`
-- PR: not created; this checkout has no confirmed push/PR URL.
+- Branch URL: https://github.com/z0-www/Everlasting-Ally/tree/feat/roleplay-continuity-verified
+- PR: not created because the requested base branch is not present on the remote; no PR URL is claimed.
 - Runtime: Node.js 24 (uses built-in `node:sqlite`).
 
 ## Commands executed
