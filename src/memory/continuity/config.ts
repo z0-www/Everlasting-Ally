@@ -1,0 +1,1 @@
+export const continuityConfig={continuityEnabled:false,continuityContextEnabled:false,maxContinuityItems:8,maxContinuityChars:1200,minContinuityConfidence:0.6,requirePreferenceApproval:true} as const;
