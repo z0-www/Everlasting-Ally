@@ -1,0 +1,4 @@
+import {DatabaseSync} from 'node:sqlite';
+export interface Migration {version:number; name:string; up:(db:DatabaseSync)=>void}
+export function migrate(db:DatabaseSync,migrations:Migration[]){db.exec('CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY,name TEXT NOT NULL,applied_at TEXT NOT NULL)');const applied=new Set((db.prepare('SELECT version FROM schema_migrations ORDER BY version').all() as any[]).map(x=>x.version));for(const m of [...migrations].sort((a,b)=>a.version-b.version)){if(applied.has(m.version))continue;db.exec('BEGIN');try{m.up(db);db.prepare('INSERT INTO schema_migrations VALUES(?,?,?)').run(m.version,m.name,new Date().toISOString());db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}}}
+export const coreMigration:Migration={version:1,name:'core-schema-marker',up:()=>{}};
