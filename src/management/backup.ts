@@ -1,0 +1,3 @@
+import {copyFileSync,existsSync,readFileSync,writeFileSync} from 'node:fs';import {DatabaseSync} from 'node:sqlite';
+export function backupDatabase(source:string,target:string){if(!existsSync(source))throw Error('database does not exist');const db=new DatabaseSync(source);try{db.exec(`VACUUM INTO '${target.replaceAll("'","''")}'`)}finally{db.close()}}
+export function restoreDatabase(backup:string,target:string){const db=new DatabaseSync(backup);try{const check=db.prepare('PRAGMA integrity_check').get() as any;if(check.integrity_check!=='ok')throw Error('backup integrity check failed');}finally{db.close()}copyFileSync(backup,target)}

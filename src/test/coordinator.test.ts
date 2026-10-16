@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {MemoryContextCoordinator} from '../runtime/coordinator.js';
+test('coordinator isolates fiction from assistant and bounds output',()=>{const c=new MemoryContextCoordinator([{read:()=>[{kind:'fiction',text:'magic world',sourceId:'fiction:x'},{kind:'fact',text:'prefers concise',sourceId:'u:1'},{kind:'fact',text:'prefers concise',sourceId:'u:1'}]}],40,5);assert.doesNotMatch(c.build('assistant',{scopeId:'u'}),/magic/);assert.ok(c.build('companion',{scopeId:'u'}).length<=40)});
+test('status exposes unverified hook honestly',async()=>{const {getPluginStatus}=await import('../management/status.js');assert.equal(getPluginStatus().hookStatus,'hook_unavailable')});
