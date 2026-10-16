@@ -17,3 +17,7 @@ The implementation uses Node 24's built-in `node:sqlite`, so no external model A
 ## v0.8 roleplay layer
 
 `src/roleplay` adds isolated character profiles, worlds, story branches/scenes, sessions, relationships, and bounded context previews. Roleplay mode is explicit and inactive sessions return no roleplay context. Fictional records are scoped by world/story/branch and are never promoted to real-user memory. Relationship records require source event IDs. The DSH pre-request hook remains unverified, so no automatic injection is claimed.
+
+## v0.9 narrative evolution
+
+`src/roleplay/evolution` adds evidence-backed narrative states, versioned transitions, isolated story branches, relationship transitions, fictional emotional states, character-growth proposals, and bounded narrative context. Proposed changes never become canon until explicitly confirmed. DSH automatic injection remains unavailable pending a verified request hook.
