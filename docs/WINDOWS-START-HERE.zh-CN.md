@@ -64,3 +64,7 @@ dsh profile --help
 ## 7. 当前验收边界
 
 已验证的是 SQLite 角色剧情保存、关闭重开、检索、记忆更正和上下文预览。普通 v0.6.1 记忆模块在此仓库中不存在，因此不能声称 `MemoryStorage` 生命周期或真实 DSH 对话自动回忆已通过验证。Windows Desktop 实机测试必须由 Windows 环境执行。
+
+## RC2 集成测试
+
+在项目目录执行 `npm run demo:integrated`。成功时会输出 `crossProcess: "pass"`、`roleplay: "pass"` 和 `fictionExcludedFromReal: "pass"`。旧版 DSH 工具测试可用 `npm test` 一起运行；Windows Desktop 仍需按官方 profile 文档实测。
