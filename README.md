@@ -29,3 +29,7 @@ Run `npm run demo:roleplay` to execute a real SQLite persistence demo: it create
 ## 角色记忆管理
 
 `npm run roleplay:manage -- source EVENT_ID` 查看来源；`ROLEPLAY_DB=path npm run roleplay:manage -- list '{"worldId":"...","storySessionId":"...","branchId":"...","characterId":"..."}'` 查看已确认记忆。更正流程使用 `correct EVENT_ID 'replacement|reason|sourceId'` 后再 `confirm-correction ID`；删除必须设置 `ROLEPLAY_CONFIRM=yes`。`npm run demo:emotional` 会演示争执、可审计更正、重启恢复和上下文预览。
+
+## Windows 验收
+
+Windows 新手请从 [docs/WINDOWS-START-HERE.zh-CN.md](docs/WINDOWS-START-HERE.zh-CN.md) 开始。当前仓库可验证角色记忆 MVP；v0.6.1 的 `MemoryStorage` 等模块和真实 DSH Desktop Hook 不在此代码快照中，详见 [docs/ACCEPTANCE-REPORT.zh-CN.md](docs/ACCEPTANCE-REPORT.zh-CN.md)。
