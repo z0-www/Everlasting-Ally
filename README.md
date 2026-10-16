@@ -21,3 +21,7 @@ The implementation uses Node 24's built-in `node:sqlite`, so no external model A
 ## v0.9 narrative evolution
 
 `src/roleplay/evolution` adds evidence-backed narrative states, versioned transitions, isolated story branches, relationship transitions, fictional emotional states, character-growth proposals, and bounded narrative context. Proposed changes never become canon until explicitly confirmed. DSH automatic injection remains unavailable pending a verified request hook.
+
+## Roleplay memory MVP
+
+Run `npm run demo:roleplay` to execute a real SQLite persistence demo: it creates the fictional mage 艾琳, stores a confirmed rune-stone event, closes and reopens the database, and retrieves the event by ID. Roleplay events are scoped by world, session, branch, and character; only confirmed events are recalled. This is a local MVP and does not claim Windows DSH integration.
