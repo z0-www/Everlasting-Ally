@@ -53,3 +53,7 @@ Host 不提供未授权的删除工具。测试数据库必须单独指定；停
 ## RC3 coverage gate
 
 `npm test` lists every test file and writes `artifacts/test-inventory.json`; it does not rely on shell glob expansion, so Windows and Ubuntu receive the same 9 compiled plus 11 legacy files. `scripts/desktop-smoke.ps1` is a read-only Windows helper; it stops at `NOT_VERIFIED` when no supported DSH CLI/install interface is available.
+
+## Known Windows CI fix in progress
+
+The prior Windows run `39042998345` failed with `EPERM` while deleting a roleplay SQLite temp directory. The fix closes both database connections in `src/test/mvp.test.ts` using `try/finally`; a new two-platform Actions run must pass before this branch can become RC3.

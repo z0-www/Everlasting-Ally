@@ -32,3 +32,7 @@ The referenced Actions run `39041772822` could not be read from this environment
 ## Test parity update
 
 `npm test` now uses `scripts/test-discovery.mjs`, which classifies `dist/test` and `test` through explicit metadata rather than platform-specific path suffixes. The local inventory contained 9 compiled test files and 11 legacy files; 46 test cases passed. The inventory is written from the actual runner to `artifacts/test-inventory.json`. A new Windows/Ubuntu Actions run is still required to prove parity on both hosts.
+
+## Confirmed Windows SQLite failure and fix
+
+Actions run `39042998345` reported `EPERM` during `rmSync()` in `src/test/mvp.test.ts` (`roleplay MVP persists confirmed events and isolates branch/character`). The test left its first and reopened `RoleplayService` connections alive before deleting the temporary directory. The test now uses `try/finally`, explicitly closes the first connection before reopening, closes the second connection before cleanup, and closes any partially constructed connection on assertion failure. The package remains RC2 until a new Windows and Ubuntu Actions run confirms this fix.
