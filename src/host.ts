@@ -135,7 +135,7 @@ export function apply(root: HostContext, rawConfig?: unknown): void {
       execute: async (): Promise<StatusResult> => {
         const stats = runtime.storage?.getMemoryStats()
         return {
-          pluginVersion: stats?.pluginVersion ?? '0.6.1',
+          pluginVersion: stats?.pluginVersion ?? '1.0.0-rc.2',
           enabled: stats?.enabled ?? resolveMemoryConfig(rawConfig).enabled,
           databaseStatus: stats?.databaseStatus ?? 'unavailable',
           eventCount: stats?.eventCount ?? 0,

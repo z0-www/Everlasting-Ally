@@ -1,0 +1,10 @@
+{
+  "memory": {
+    "enabled": true,
+    "recallEnabled": true,
+    "reflectionEnabled": true,
+    "databasePath": "./ally-test-data/real-memory.sqlite",
+    "autoRecallEnabled": false,
+    "modelReflectionEnabled": false
+  }
+}

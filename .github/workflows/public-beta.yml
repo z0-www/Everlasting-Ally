@@ -1,0 +1,25 @@
+name: Public beta verification
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  local-business-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm run verify:manifest
+      - run: node scripts/run-demos.mjs
+      - run: npm run verify:package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: candidate-${{ matrix.os }}
+          path: artifacts/

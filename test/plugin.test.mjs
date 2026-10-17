@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { apply, TOOL_NAME } from '../dist/index.js'
+import packageJson from '../package.json' with { type: 'json' }
 
 test('registers inside_memory_ping and unregisters it through the effect', async () => {
   const definitions = new Map()
@@ -25,7 +26,7 @@ test('registers inside_memory_ping and unregisters it through the effect', async
   assert.deepEqual(value, { ok: true, plugin: 'everlasting-ally', message: 'hello' })
   assert.deepEqual(definition.output.render({}, value), [{ type: 'text', text: JSON.stringify(value) }])
   const status = await definitions.get('inside_memory_status').execute({})
-  assert.equal(status.pluginVersion, '0.6.1')
+  assert.equal(status.pluginVersion, packageJson.version)
   assert.equal(status.enabled, false)
   assert.equal(status.databaseStatus, 'disabled')
   const recall = await definitions.get('inside_memory_recall').execute({ query: 'project' })

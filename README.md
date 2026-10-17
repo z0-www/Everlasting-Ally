@@ -1,47 +1,51 @@
 # Everlasting Ally
 
-Everlasting Ally v0.7 provides a local Personality Continuity Engine for DeepSeek Harness integrations. It separates explicit user preferences, observed assistant behavior, and evidence-backed growth guidelines. The engine stores profiles and proposals in SQLite, requires explicit approval before a proposal affects the active profile, supports rejection/revocation/reset, enforces scope isolation, and produces bounded context previews.
+**Public Beta Candidate · 尚未正式稳定发布**
 
-Continuity is disabled by default (`enabled=false`); style values are bounded to 0–1 and cannot override current requests, system instructions, privacy, safety, accuracy, or uncertainty. No sensitive attributes, private chain of thought, or invented emotions are inferred. The current repository has no verified DSH pre-request hook, so automatic injection is not implemented; see [`docs/dsh-api-audit.md`](docs/dsh-api-audit.md).
+为 DeepSeek Harness 提供本地长期记忆，并提供实验性的角色剧情存储与上下文预览。默认不保存对话，只有显式开启后才写入 SQLite。不需要模型 API Key。
 
-## Development
+- 当前包：`1.0.0-rc.2`；RC3 准备分支：[feat/public-beta-readiness-rc3](https://github.com/z0-www/Everlasting-Ally/tree/feat/public-beta-readiness-rc3)。Windows CI 与 Desktop 验收未确认前保持 RC2。
+- 推荐 **Node.js 24**；package 实际最低要求 **Node.js >=22.5**。没有验证所有 Node 22 版本。
+- [下载此测试分支源码](https://github.com/z0-www/Everlasting-Ally/archive/refs/heads/feat/public-beta-readiness-rc3.zip)。main 仍未合并完整实现，请勿下载 main 测试。
+- 尚未公开 Release、未发布 npm。预编译 tgz 和 SHA-256 可由 `npm run verify:package` 在本机生成，或在成功的 [Actions](https://github.com/z0-www/Everlasting-Ally/actions) 中下载对应 artifact（如果本次运行实际成功）。
 
-```sh
+## 现在能测试什么
+
+| 能力 | 状态 |
+|---|---|
+| 双向事件采集、工具结果、SQLite、规则记忆球、检索、基础反思 | 本地模块及模拟 Host 测试；显式启用 |
+| 四个 inside_memory_* 工具、Host apply、manifest | 恢复并自动测试；真实 Desktop 未验证 |
+| 角色档案、故事、更正、剧情连续性 | 本地实验模块；没有完整 Desktop 角色管理 UI |
+| 普通对话自动回忆/自动上下文注入 | 未验证 Hook，`hook_unavailable`，不承诺模型自动使用记忆 |
+| 多用户隔离 | 不支持；仅可信单用户本地使用 |
+
+## 初次测试
+
+在解压后的项目目录打开 PowerShell（见[逐步 Windows 指南](docs/WINDOWS-START-HERE.zh-CN.md)）：
+
+```powershell
+node --version
 npm ci
 npm run build
 npm test
+npm run verify:manifest
+npm run demo:integrated
+npm run test:memory-lifecycle
+npm run verify:package
 ```
 
-The implementation uses Node 24's built-in `node:sqlite`, so no external model API key is needed. `ContinuityService` exposes profile/evidence/proposal/approval/rejection/revocation/preferences/reset and bounded context-preview operations. Use a trusted host identity for `scopeId`; this package does not provide network authentication or claim multi-user identity isolation.
+预期：测试计数非零且无失败；集成演示显示 `crossProcess`、`roleplay`、`fictionExcludedFromReal` 为 `pass`；打包验证显示 `cleanInstall: true`、`entryImport: true`，产物位于 `artifacts/`。演示只使用唯一临时目录，结束关闭数据库并清理。它们不连接 DeepSeek，不生成真实模型回答。
 
-## v0.8 roleplay layer
+## 显式启用和关闭
 
-`src/roleplay` adds isolated character profiles, worlds, story branches/scenes, sessions, relationships, and bounded context previews. Roleplay mode is explicit and inactive sessions return no roleplay context. Fictional records are scoped by world/story/branch and are never promoted to real-user memory. Relationship records require source event IDs. The DSH pre-request hook remains unverified, so no automatic injection is claimed.
+[examples/config](examples/config/) 中的 JSON 是正式 `resolveMemoryConfig()` 可读取的插件配置对象，**不是可直接导入 Desktop 的 profile**。从 `capture.json`、`recall.json` 开始，按需选择规则分析或反思，`off.json` 关闭全部记忆。所有示例关闭自动注入与模型反思。
 
-## v0.9 narrative evolution
+DSH 安装到隔离 profile 的具体命令需要测试者按目标版本官方说明确认。不要改主 profile，不要同时加载其他记忆插件混淆结果。详见[隔离 Desktop 实测协议](docs/verification/desktop-protocol.md)。
 
-`src/roleplay/evolution` adds evidence-backed narrative states, versioned transitions, isolated story branches, relationship transitions, fictional emotional states, character-growth proposals, and bounded narrative context. Proposed changes never become canon until explicitly confirmed. DSH automatic injection remains unavailable pending a verified request hook.
+## 隐私、删除与反馈
 
-## Roleplay memory MVP
+Host 不提供未授权的删除工具。测试数据库必须单独指定；停止插件、关闭全部连接后，按指南删除自己创建的测试目录。角色纠正保留审计，不能把 superseded 等同于物理删除。角色模块仍有待修复的派生删除与可信调用边界问题，勿用于私人数据或共享服务，见[安全复审](docs/verification/security-review.md)。
 
-Run `npm run demo:roleplay` to execute a real SQLite persistence demo: it creates the fictional mage 艾琳, stores a confirmed rune-stone event, closes and reopens the database, and retrieves the event by ID. Roleplay events are scoped by world, session, branch, and character; only confirmed events are recalled. This is a local MVP and does not claim Windows DSH integration.
+反馈请使用 [Issues](https://github.com/z0-www/Everlasting-Ally/issues)，附 Node/DSH 版本、命令和脱敏错误；不要上传真实数据库、聊天或凭证。[测试记录表](docs/verification/desktop-protocol.md) 区分 PASS / FAIL / BLOCKED / NOT_VERIFIED。
 
-## 角色记忆管理
-
-`npm run roleplay:manage -- source EVENT_ID` 查看来源；`ROLEPLAY_DB=path npm run roleplay:manage -- list '{"worldId":"...","storySessionId":"...","branchId":"...","characterId":"..."}'` 查看已确认记忆。更正流程使用 `correct EVENT_ID 'replacement|reason|sourceId'` 后再 `confirm-correction ID`；删除必须设置 `ROLEPLAY_CONFIRM=yes`。`npm run demo:emotional` 会演示争执、可审计更正、重启恢复和上下文预览。
-
-## Windows 验收
-
-Windows 新手请从 [docs/WINDOWS-START-HERE.zh-CN.md](docs/WINDOWS-START-HERE.zh-CN.md) 开始。当前仓库可验证角色记忆 MVP；v0.6.1 的 `MemoryStorage` 等模块和真实 DSH Desktop Hook 不在此代码快照中，详见 [docs/ACCEPTANCE-REPORT.zh-CN.md](docs/ACCEPTANCE-REPORT.zh-CN.md)。
-
-## Memory-to-Dialogue Bridge
-
-`npm run demo:dialogue` runs a real SQLite dialogue-memory selection demo. The bridge is disabled by default, selects only confirmed relevant evidence, deduplicates source events, enforces a context budget, and reports `hook_unavailable`; it does not claim that a DSH model received or used the preview.
-
-## Companion and roleplay MVP
-
-`npm run demo:companion` demonstrates the unified `ConversationModeService`: a fictional role can retrieve its confirmed story events, another character cannot, and assistant mode excludes fictional memories. Roleplay and companion context are local previews; no DSH request hook is claimed.
-
-## Independent verification
-
-The continuity verification report and machine-readable results are in [`docs/verification/`](docs/verification/). The implementation commit, commands, test count, SQLite restart result, isolation result, and DSH limitations are recorded there for an independent reviewer.
+开发沿革见 [CHANGELOG](CHANGELOG.md) 和 [RC2 合流审计](docs/dsh-merge-audit.md)。未合并 main、未创建正式 Release、未发布 npm。

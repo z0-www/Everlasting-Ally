@@ -26,7 +26,7 @@ export type SaveReflectionResult = { saved: boolean; reason?: 'disabled' | 'refl
 const SENSITIVE_KEY = /password|passphrase|token|secret|api[_-]?key|authorization|cookie|credential/i
 const SENSITIVE_VALUE = /bearer\s+[a-z0-9._~+/=-]{8,}|(?:sk|ghp|github_pat|xox[baprs])-[a-z0-9_-]{8,}|\b(?:password|token|secret|api[_-]?key)\s*[:=]\s*\S+/i
 const REDACTED = '[REDACTED]'
-export const PLUGIN_VERSION = '0.6.1'
+export const PLUGIN_VERSION = '1.0.0-rc.2'
 
 function sanitize(value: JsonValue, key = ''): JsonValue {
   if (SENSITIVE_KEY.test(key)) return REDACTED

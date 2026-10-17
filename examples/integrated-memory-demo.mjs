@@ -1,3 +1,32 @@
-import {mkdtempSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {spawnSync} from 'node:child_process';import {MemoryCapture} from '../dist/memory/capture.js';import {MemoryStorage} from '../dist/memory/storage.js';import {resolveMemoryConfig} from '../dist/memory/config.js';import {RoleplayService} from '../dist/index.js';
-const dir=mkdtempSync(join(tmpdir(),'everlasting-integrated-'));const realDb=join(dir,'real.sqlite');const capture=new MemoryCapture(undefined,()=>new Date().toISOString());let real=new MemoryStorage(resolveMemoryConfig({memory:{enabled:true,recallEnabled:true,databasePath:realDb}}));for(const e of [capture.capture({id:'real-session'},{type:'user/message',id:'u1',content:'虚构项目需要长期记忆'}),capture.capture({id:'real-session'},{type:'assistant/message',id:'a1',content:'我们会先验证接口'}),capture.capture({id:'real-session'},{type:'tool/result',id:'t1',callId:'c1',result:{ok:false,error:'版本不兼容'}})])if(!real.saveEvent(e).saved)throw Error('real save failed');real.close();const child=spawnSync(process.execPath,['examples/reopen-memory-child.mjs',realDb],{encoding:'utf8'});if(child.status!==0)throw Error(child.stderr);if(!child.stdout.includes('u1'))throw Error('cross-process restore failed');rmSync(realDb,{force:true});
-const roleDb=join(dir,'role.sqlite');let role=new RoleplayService(roleDb);const world=role.createWorld({name:'森林',description:'虚构世界',storyFacts:[]});const c=role.createCharacter({name:'艾琳',description:'旅行法师',background:'',personalityTraits:[],communicationStyle:'温和',motivations:[],personalGoals:[],relationships:[],storyRole:'同伴',boundaries:[],worldId:world.worldId});const session=role.startSession({mode:'roleplay',worldId:world.worldId,storyId:'story',branchId:'main',characterId:c.characterId});role.saveEvent({id:'rune',storySessionId:session.sessionId,worldId:world.worldId,characterId:c.characterId,branchId:'main',actor:'user',content:'发现符文石',eventType:'plot_event',canonicalStatus:'confirmed'});role.close();role=new RoleplayService(roleDb);if(role.recallEvents({worldId:world.worldId,storySessionId:session.sessionId,branchId:'main',characterId:c.characterId}).length!==1)throw Error('role restore failed');role.deleteStory(session.sessionId);role.close();rmSync(dir,{recursive:true,force:true});console.log(JSON.stringify({realAssistantEvents:['u1','a1','t1'],crossProcess:'pass',roleplay:'pass',fictionExcludedFromReal:'pass'}));
+import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {MemoryCapture} from '../dist/memory/capture.js';
+import {MemoryStorage} from '../dist/memory/storage.js';
+import {resolveMemoryConfig} from '../dist/memory/config.js';
+import {RoleplayService} from '../dist/index.js';
+const directory=mkdtempSync(join(tmpdir(),'ally-integrated-'));
+let real,role;
+try {
+ const databasePath=join(directory,'real.sqlite');
+ real=new MemoryStorage(resolveMemoryConfig({memory:{enabled:true,recallEnabled:true,databasePath}}));
+ const capture=new MemoryCapture();
+ for(const event of [{type:'user/message',id:'u1',content:'虚构测试项目'}, {type:'assistant/message',id:'a1',content:'先核对接口'}, {type:'tool/result',id:'t1',callId:'c1',result:{ok:false,error:'版本不兼容'}}])assert.equal(real.saveEvent(capture.capture({id:'real-session'},event)).saved,true);
+ real.close();
+ const child=spawnSync(process.execPath,[fileURLToPath(new URL('./reopen-memory-child.mjs',import.meta.url)),databasePath],{encoding:'utf8',timeout:15000});
+ assert.equal(child.status,0,child.stderr);assert.deepEqual(child.stdout.trim().split(',').sort(),['a1','t1','u1']);
+ role=new RoleplayService(join(directory,'role.sqlite'));
+ const world=role.createWorld({name:'森林',description:'虚构世界',storyFacts:[]});
+ const character=role.createCharacter({name:'艾琳',description:'成年旅行法师',background:'',personalityTraits:[],communicationStyle:'温和',motivations:[],personalGoals:[],relationships:[],storyRole:'同伴',boundaries:[],worldId:world.worldId});
+ const session=role.startSession({mode:'roleplay',worldId:world.worldId,storyId:'story',branchId:'main',characterId:character.characterId});
+ const scope={worldId:world.worldId,storySessionId:session.sessionId,branchId:'main',characterId:character.characterId};
+ role.saveEvent({...scope,id:'rune',actor:'user',content:'发现符文石',eventType:'plot_event',canonicalStatus:'confirmed'});
+ role.close();role=new RoleplayService(join(directory,'role.sqlite'));
+ assert.equal(role.recallEvents(scope)[0].id,'rune');assert.equal(role.recallEvents({...scope,branchId:'other'}).length,0);
+ role.deleteStory(session.sessionId);assert.equal(role.recallEvents(scope).length,0);
+ real=new MemoryStorage(resolveMemoryConfig({memory:{enabled:true,databasePath}}));assert.equal(real.getEvent('rune'),null);
+ console.log(JSON.stringify({assistantEventIds:['u1','a1','t1'],crossProcess:'pass',roleplay:'pass',fictionExcludedFromReal:'pass'}));
+} finally {role?.close();real?.close();rmSync(directory,{recursive:true,force:true});}
