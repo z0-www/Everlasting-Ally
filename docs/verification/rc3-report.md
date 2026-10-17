@@ -28,3 +28,7 @@ Windows 11 execution, Windows-specific PowerShell behavior, Ubuntu GitHub Action
 ## Windows CI failure investigation update
 
 The referenced Actions run `39041772822` could not be read from this environment: GitHub API returned `Forbidden`; no original Windows test name or stack trace is claimed. Static review identified the portable failure risk in the old `node --test dist/test/*.test.js && node --test test/*.test.mjs` shell glob. `scripts/run-tests.mjs` now enumerates exactly the 19 test files with Node filesystem APIs and propagates the child exit code, so Windows does not depend on shell glob expansion. The new local run executed 45 tests with 45 passing. A new Actions run is required before declaring the Windows failure resolved.
+
+## Test parity update
+
+`npm test` now uses `scripts/test-discovery.mjs`, which classifies `dist/test` and `test` through explicit metadata rather than platform-specific path suffixes. The local inventory contained 9 compiled test files and 11 legacy files; 46 test cases passed. The inventory is written from the actual runner to `artifacts/test-inventory.json`. A new Windows/Ubuntu Actions run is still required to prove parity on both hosts.

@@ -49,3 +49,7 @@ Host 不提供未授权的删除工具。测试数据库必须单独指定；停
 反馈请使用 [Issues](https://github.com/z0-www/Everlasting-Ally/issues)，附 Node/DSH 版本、命令和脱敏错误；不要上传真实数据库、聊天或凭证。[测试记录表](docs/verification/desktop-protocol.md) 区分 PASS / FAIL / BLOCKED / NOT_VERIFIED。
 
 开发沿革见 [CHANGELOG](CHANGELOG.md) 和 [RC2 合流审计](docs/dsh-merge-audit.md)。未合并 main、未创建正式 Release、未发布 npm。
+
+## RC3 coverage gate
+
+`npm test` lists every test file and writes `artifacts/test-inventory.json`; it does not rely on shell glob expansion, so Windows and Ubuntu receive the same 9 compiled plus 11 legacy files. `scripts/desktop-smoke.ps1` is a read-only Windows helper; it stops at `NOT_VERIFIED` when no supported DSH CLI/install interface is available.
