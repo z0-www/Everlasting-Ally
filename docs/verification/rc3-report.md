@@ -15,7 +15,7 @@ Package remains `1.0.0-rc.2`; RC3 is not declared complete because Windows/Ubunt
 - `npm run verify:manifest`: PASS
 - `node scripts/run-demos.mjs`: PASS, all six demos
 - `npm_config_cache=/tmp/npm-cache npm run verify:package`: PASS; clean install/import and SHA-256 artifact generated under `artifacts/`
-- SHA-256 from this run: `984cd99bfea5cb023212f6c83d017f84165c64079bd73f8f04e038008796d9f0`
+- SHA-256 from this run: `e901436ef3e8b90dfb7ff2239c8ba607157649be729d745165e6e50c6ab19e04`
 
 ## Security review
 
