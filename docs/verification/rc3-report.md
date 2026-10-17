@@ -24,3 +24,7 @@ See `security-review.md`. No authored runtime network client or dynamic code exe
 ## Not verified
 
 Windows 11 execution, Windows-specific PowerShell behavior, Ubuntu GitHub Actions result, DSH Desktop plugin installation, real tool registration, Desktop profile isolation, request-before-context Hook, and model use of generated context. The repository does not publish a release and main remains intentionally unmerged.
+
+## Windows CI failure investigation update
+
+The referenced Actions run `39041772822` could not be read from this environment: GitHub API returned `Forbidden`; no original Windows test name or stack trace is claimed. Static review identified the portable failure risk in the old `node --test dist/test/*.test.js && node --test test/*.test.mjs` shell glob. `scripts/run-tests.mjs` now enumerates exactly the 19 test files with Node filesystem APIs and propagates the child exit code, so Windows does not depend on shell glob expansion. The new local run executed 45 tests with 45 passing. A new Actions run is required before declaring the Windows failure resolved.

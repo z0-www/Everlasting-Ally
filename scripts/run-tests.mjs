@@ -1,0 +1,3 @@
+import {readdirSync} from 'node:fs';import {fileURLToPath} from 'node:url';import {join,resolve} from 'node:path';import {spawnSync} from 'node:child_process';
+const root=fileURLToPath(new URL('../',import.meta.url));const dirs=[join(root,'dist','test'),join(root,'test')];const files=[];for(const dir of dirs){for(const name of readdirSync(dir).sort()){if((dir.endsWith('dist/test')&&name.endsWith('.test.js'))||(dir.endsWith('test')&&name.endsWith('.test.mjs')))files.push(join(dir,name));}}
+if(!files.length){console.error('No test files found');process.exit(1)}console.log(`Executing ${files.length} test files`);const result=spawnSync(process.execPath,['--test',...files],{cwd:root,stdio:'inherit'});process.exit(result.status??1);

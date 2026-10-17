@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "npm run build && node --test dist/test/*.test.js && node --test test/*.test.mjs",
+    "test": "npm run build && node scripts/run-tests.mjs",
     "demo:roleplay": "npm run build && node examples/roleplay-memory-demo.mjs",
     "roleplay:manage": "npm run build && node dist/roleplay/manage.js",
     "demo:emotional": "npm run build && node examples/emotional-roleplay-demo.mjs",
