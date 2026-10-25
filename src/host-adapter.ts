@@ -16,7 +16,7 @@ export type ToolContext = {
 
 export type HostRoot = {
   inject(services: string[], callback: (context: ToolContext) => void): void
-  on?: (event: string, listener: (session: unknown, event: unknown) => void) => (() => void) | void
+  on?: (event: string, listener: (session: any, event: any) => void) => (() => void) | void
   effect?: (setup: () => (() => void) | void, label?: string) => void
 }
 
@@ -81,7 +81,7 @@ export class HostAdapter {
     return () => { this.cleanups.delete(guarded); guarded() }
   }
 
-  subscribe(event: string, listener: (session: unknown, payload: unknown) => void): AdapterSubscription {
+  subscribe(event: string, listener: (session: any, payload: any) => void): AdapterSubscription {
     if (this.stopped) return { supported: false, cleanupRegistered: false, reason: 'adapter stopped' }
     if (typeof this.root.on !== 'function') return { supported: false, cleanupRegistered: false, reason: 'host event subscription is unavailable' }
     try {
