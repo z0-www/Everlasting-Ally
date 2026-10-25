@@ -44,7 +44,7 @@ export type HostCapability = {
 }
 
 export type HostDiagnostics = {
-  hostVersion?: string
+  hostVersion: string | null
   apiVersion: 'unverified'
   state: 'created' | 'running' | 'stopped' | 'failed'
   errors: string[]
@@ -73,7 +73,7 @@ export class HostAdapter {
   private started = false
   private readonly diagnosticsState: HostDiagnostics
 
-  constructor(private readonly root: HostRoot, hostVersion = root.version) {
+  constructor(private readonly root: HostRoot, hostVersion = root.version ?? null) {
     this.diagnosticsState = {
       hostVersion,
       apiVersion: 'unverified',
@@ -196,15 +196,15 @@ export class HostAdapter {
 function detectCapabilities(root: HostRoot): HostDiagnostics['capabilities'] {
   return {
     tools: {
-      status: typeof root.inject === 'function' ? 'available' : 'unsupported',
+      available: typeof root.inject === 'function',\n      status: typeof root.inject === 'function' ? 'available' : 'unsupported',
       reason: typeof root.inject === 'function' ? undefined : 'Host inject API is unavailable',
     },
     eventSubscription: {
-      status: typeof root.on === 'function' ? 'available' : 'unverified',
+      available: typeof root.on === 'function',\n      status: typeof root.on === 'function' ? 'available' : 'unverified',
       reason: typeof root.on === 'function' ? undefined : 'Host event API was not provided',
     },
     lifecycleEffects: {
-      status: typeof root.effect === 'function' ? 'available' : 'unverified',
+      available: typeof root.effect === 'function',\n      status: typeof root.effect === 'function' ? 'available' : 'unverified',
       reason: typeof root.effect === 'function' ? undefined : 'Host effect API was not provided',
     },
   }
