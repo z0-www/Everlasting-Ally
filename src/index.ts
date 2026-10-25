@@ -1,4 +1,5 @@
 export * from './host.js';
+export * from './host-adapter.js';
 export * from './memory/dialogue/index.js';
 export * from './memory/continuity/index.js';
 export * from './roleplay/index.js';
