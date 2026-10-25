@@ -39,6 +39,7 @@ export type AdapterSubscription = {
 export type HostCapabilityStatus = 'available' | 'unsupported' | 'unverified'
 
 export type HostCapability = {
+  available: boolean
   status: HostCapabilityStatus
   reason?: string
 }
