@@ -92,12 +92,30 @@ export class HostAdapter {
     } catch (error) { this.diagnosticsState.errors.push(errorText(error)); this.diagnosticsState.state = 'failed'; throw error }
   }
 
+  effect(setup: () => (() => void) | void, label = 'everlasting-ally: effect'): void {
+    if (this.stopped) throw new Error('HostAdapter has already stopped')
+    if (typeof this.root.effect !== 'function') {
+      const cleanup = setup()
+      if (typeof cleanup === 'function') this.registerCleanup(cleanup, label)
+      return
+    }
+    const guardedSetup = () => {
+      const cleanup = setup()
+      if (typeof cleanup !== 'function') return
+      const guarded = once(cleanup)
+      this.cleanups.add(guarded)
+      return () => { this.cleanups.delete(guarded); guarded() }
+    }
+    try { this.root.effect(guardedSetup, label) }
+    catch (error) { this.diagnosticsState.errors.push(errorText(error)); this.diagnosticsState.state = 'failed'; this.stop(); throw error }
+  }
+
   injectTools(callback: (context: ToolContext) => void): void {
     if (this.stopped) throw new Error('HostAdapter has already stopped')
     try {
       this.root.inject(['tools'], (context) => callback({
         tools: context.tools,
-        effect: (setup, label) => { const cleanup = setup(); if (typeof cleanup === 'function') this.registerCleanup(cleanup, label) },
+        effect: (setup, label) => this.effect(setup, label),
       }))
     } catch (error) { this.diagnosticsState.errors.push(errorText(error)); this.diagnosticsState.state = 'failed'; this.stop(); throw error }
   }
