@@ -161,7 +161,13 @@ export class HostAdapter {
     }
     try {
       const disposer = this.root.on(event, listener)
-      if (typeof disposer === 'function') this.registerCleanup(disposer, `everlasting-ally: event ${event}`)
+      if (typeof disposer === 'function') {
+        if (typeof this.root.effect === 'function') {
+          this.registerHostEffect(this.root.effect.bind(this.root), () => disposer, `everlasting-ally: event ${event}`)
+        } else {
+          this.registerCleanup(disposer, `everlasting-ally: event ${event}`)
+        }
+      }
       return { supported: true, cleanupRegistered: typeof disposer === 'function' }
     } catch (error) {
       this.diagnosticsState.errors.push(errorText(error))
