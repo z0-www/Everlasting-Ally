@@ -11,26 +11,7 @@ import type { SessionEventLike, SessionLike } from './memory/types.js'
 
 type ToolResult = { ok: true; plugin: 'everlasting-ally'; message: string }
 type StatusResult = Omit<MemoryStats, 'lastSuccessfulWriteAt'> & { lastSuccessfulWriteAt: string }
-type ToolContext = {
-  tools: {
-    register(definition: {
-      name: string
-      description: string
-      parameters: Record<string, unknown>
-      output: {
-        schema: Record<string, unknown>
-        render(args: unknown, value: unknown): Array<Record<string, unknown>>
-      }
-      execute(args: unknown): Promise<unknown>
-    }): () => void
-  }
-  effect(setup: () => (() => void) | void, label?: string): void
-}
-type HostContext = {
-  inject(services: string[], callback: (context: ToolContext) => void): void
-  on?: (event: string, listener: (session: SessionLike, event: SessionEventLike) => void) => (() => void) | void
-  effect?: (setup: () => (() => void) | void, label?: string) => void
-}
+type HostContext = import('./host-adapter.js').HostRoot
 const TOOL_NAME = 'inside_memory_ping'
 
 function normalizeMessage(args: unknown): string {
