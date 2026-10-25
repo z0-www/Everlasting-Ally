@@ -196,15 +196,18 @@ export class HostAdapter {
 function detectCapabilities(root: HostRoot): HostDiagnostics['capabilities'] {
   return {
     tools: {
-      available: typeof root.inject === 'function',\n      status: typeof root.inject === 'function' ? 'available' : 'unsupported',
+      available: typeof root.inject === 'function',
+      status: typeof root.inject === 'function' ? 'available' : 'unsupported',
       reason: typeof root.inject === 'function' ? undefined : 'Host inject API is unavailable',
     },
     eventSubscription: {
-      available: typeof root.on === 'function',\n      status: typeof root.on === 'function' ? 'available' : 'unverified',
+      available: typeof root.on === 'function',
+      status: typeof root.on === 'function' ? 'available' : 'unverified',
       reason: typeof root.on === 'function' ? undefined : 'Host event API was not provided',
     },
     lifecycleEffects: {
-      available: typeof root.effect === 'function',\n      status: typeof root.effect === 'function' ? 'available' : 'unverified',
+      available: typeof root.effect === 'function',
+      status: typeof root.effect === 'function' ? 'available' : 'unverified',
       reason: typeof root.effect === 'function' ? undefined : 'Host effect API was not provided',
     },
   }
