@@ -7,7 +7,7 @@ function fakeHost({ on, effect, inject } = {}) {
   const host = {
     inject: inject ?? ((_services, callback) => callback({
       tools: { register(definition) { definitions.set(definition.name, definition); return () => definitions.delete(definition.name) } },
-      effect(setup) { const cleanup = setup(); if (cleanup) cleanup() },
+      effect() {},
     })),
     ...(on ? { on } : {}),
     ...(effect ? { effect } : {}),
@@ -29,7 +29,7 @@ test('registers tools and cleans up through the adapter', () => {
   const events = []
   const { host, definitions } = fakeHost({
     on(event) { events.push(event); return () => events.pop() },
-    effect(setup) { setup() },
+    effect() {},
   })
   const adapter = new HostAdapter(host)
   adapter.injectTools(({ tools, effect }) => {
