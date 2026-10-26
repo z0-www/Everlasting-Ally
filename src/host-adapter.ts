@@ -180,7 +180,11 @@ export class HostAdapter {
   injectTools(callback: (context: ToolRegistrationContext) => void): void {
     if (this.stopped) throw new Error('HostAdapter has already stopped')
     try {
-      this.root.inject(['tools'], (context) => callback(context))
+      this.root.inject(['tools'], (context) => callback({
+        tools: context.tools,
+        effect: (setup, label = 'everlasting-ally: tool effect') =>
+          this.registerHostEffect(context.effect.bind(context), setup, label),
+      }))
     } catch (error) {
       this.diagnosticsState.errors.push(errorText(error))
       this.diagnosticsState.state = 'failed'
