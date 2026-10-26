@@ -1,4 +1,5 @@
 /** Minimal Everlasting Ally host facet. */
+import { HostAdapter } from './host-adapter.js'
 import { MemoryCapture } from './memory/capture.js'
 import { resolveMemoryConfig } from './memory/config.js'
 import { MemoryStorage, type MemoryStats } from './memory/storage.js'
@@ -10,26 +11,7 @@ import type { SessionEventLike, SessionLike } from './memory/types.js'
 
 type ToolResult = { ok: true; plugin: 'everlasting-ally'; message: string }
 type StatusResult = Omit<MemoryStats, 'lastSuccessfulWriteAt'> & { lastSuccessfulWriteAt: string }
-type ToolContext = {
-  tools: {
-    register(definition: {
-      name: string
-      description: string
-      parameters: Record<string, unknown>
-      output: {
-        schema: Record<string, unknown>
-        render(args: unknown, value: unknown): Array<Record<string, unknown>>
-      }
-      execute(args: unknown): Promise<unknown>
-    }): () => void
-  }
-  effect(setup: () => (() => void) | void, label?: string): void
-}
-type HostContext = {
-  inject(services: string[], callback: (context: ToolContext) => void): void
-  on?: (event: string, listener: (session: SessionLike, event: SessionEventLike) => void) => (() => void) | void
-  effect?: (setup: () => (() => void) | void, label?: string) => void
-}
+type HostContext = import('./host-adapter.js').HostRoot
 const TOOL_NAME = 'inside_memory_ping'
 
 function normalizeMessage(args: unknown): string {
@@ -41,6 +23,7 @@ function normalizeMessage(args: unknown): string {
 export const name = 'everlasting-ally'
 
 export type MemoryRuntime = {
+  adapter: HostAdapter
   capture: MemoryCapture
   storage: MemoryStorage | null
   orbService: MemoryOrbService | null
@@ -48,6 +31,7 @@ export type MemoryRuntime = {
 }
 
 export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): MemoryRuntime {
+  const adapter = new HostAdapter(root)
   const config = resolveMemoryConfig(rawConfig)
   let storage: MemoryStorage | null = null
   try {
@@ -71,20 +55,12 @@ export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): Memo
     const result = storage?.saveEvent(event)
     if (result?.saved && result.storedEvent) orbService?.enqueue(result.storedEvent)
   })
-  if (typeof root.on !== 'function') return { capture, storage, orbService, reflectionService }
-  const dispose = root.on('session/event', (session, event) => {
-    capture.handleSessionEvent(session, event)
+  adapter.subscribe('session/event', (session, event) => {
+    capture.handleSessionEvent(session as SessionLike, event as SessionEventLike)
   })
-  if (typeof dispose === 'function' && typeof root.effect === 'function') {
-    root.effect(() => dispose, 'everlasting-ally: session event listener')
-  }
-  if (orbService && typeof root.effect === 'function') {
-    root.effect(() => () => orbService.close(), 'everlasting-ally: memory orb queue')
-  }
-  if (storage && typeof root.effect === 'function') {
-    root.effect(() => () => storage?.close(), 'everlasting-ally: memory database')
-  }
-  return { capture, storage, orbService, reflectionService }
+  if (orbService) adapter.registerCleanup(() => orbService.close(), 'everlasting-ally: memory orb queue')
+  if (storage) adapter.registerCleanup(() => storage?.close(), 'everlasting-ally: memory database')
+  return { adapter, capture, storage, orbService, reflectionService }
 }
 
 export function mountMemoryCapture(root: HostContext, rawConfig?: unknown): MemoryCapture {
@@ -93,7 +69,7 @@ export function mountMemoryCapture(root: HostContext, rawConfig?: unknown): Memo
 
 export function apply(root: HostContext, rawConfig?: unknown): void {
   const runtime = mountMemoryRuntime(root, rawConfig)
-  root.inject(['tools'], (ctx) => {
+  runtime.adapter.injectTools((ctx) => {
     const unregister = ctx.tools.register({
       name: TOOL_NAME,
       description: 'Confirm that the Everlasting Ally plugin is loaded and its tool surface is available.',
