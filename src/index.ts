@@ -9,3 +9,6 @@ export * from './runtime/coordinator.js';
 export * from './runtime/conversation.js';
 export * from './management/status.js';
 export * from './management/backup.js';
+
+export * from './memory/provider.js';
+export * from './integration/config.js';
