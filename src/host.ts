@@ -4,7 +4,8 @@ import { MemoryCapture } from './memory/capture.js'
 import { resolveMemoryConfig } from './memory/config.js'
 import { MemoryStorage, type MemoryStats } from './memory/storage.js'
 import { MemoryOrbService } from './memory/orb/service.js'
-import { MemoryRecallService } from './memory/recall/service.js'
+import { SqliteMemoryReader } from './memory/provider.js'
+import { resolveIntegrationConfig } from './integration/config.js'
 import { ReflectionService } from './memory/reflection/service.js'
 import type { ReflectionBudget } from './memory/reflection/types.js'
 import type { SessionEventLike, SessionLike } from './memory/types.js'
@@ -30,16 +31,25 @@ export type MemoryRuntime = {
   reflectionService: ReflectionService | null
 }
 
+const runtimes = new WeakMap<HostContext, MemoryRuntime>()
+const applied = new WeakSet<HostContext>()
+
 export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): MemoryRuntime {
+  const previous = runtimes.get(root)
+  if (previous && previous.adapter.diagnostics.state !== 'stopped') return previous
+  const config = resolveIntegrationConfig(rawConfig).memory
   const adapter = new HostAdapter(root)
-  const config = resolveMemoryConfig(rawConfig)
+  adapter.start()
+  try {
   let storage: MemoryStorage | null = null
   try {
     storage = new MemoryStorage(config)
   } catch {
     storage = null
   }
+  if (storage) adapter.registerCleanup(() => storage?.close(), 'everlasting-ally: memory database')
   const orbService = storage ? new MemoryOrbService(storage) : null
+  if (orbService) adapter.registerCleanup(() => orbService.close(), 'everlasting-ally: memory orb queue')
   const reflectionBudget: ReflectionBudget = {
     reflectionEnabled: config.reflectionEnabled,
     modelReflectionEnabled: config.modelReflectionEnabled,
@@ -58,9 +68,11 @@ export function mountMemoryRuntime(root: HostContext, rawConfig?: unknown): Memo
   adapter.subscribe('session/event', (session, event) => {
     capture.handleSessionEvent(session as SessionLike, event as SessionEventLike)
   })
-  if (orbService) adapter.registerCleanup(() => orbService.close(), 'everlasting-ally: memory orb queue')
-  if (storage) adapter.registerCleanup(() => storage?.close(), 'everlasting-ally: memory database')
-  return { adapter, capture, storage, orbService, reflectionService }
+  const runtime = { adapter, capture, storage, orbService, reflectionService }
+  runtimes.set(root, runtime)
+  adapter.registerCleanup(() => { runtimes.delete(root); applied.delete(root) })
+  return runtime
+  } catch (error) { adapter.stop(); throw error }
 }
 
 export function mountMemoryCapture(root: HostContext, rawConfig?: unknown): MemoryCapture {
@@ -68,7 +80,9 @@ export function mountMemoryCapture(root: HostContext, rawConfig?: unknown): Memo
 }
 
 export function apply(root: HostContext, rawConfig?: unknown): void {
+  if (applied.has(root)) return
   const runtime = mountMemoryRuntime(root, rawConfig)
+  applied.add(root)
   runtime.adapter.injectTools((ctx) => {
     const unregister = ctx.tools.register({
       name: TOOL_NAME,
@@ -149,8 +163,8 @@ export function apply(root: HostContext, rawConfig?: unknown): void {
         if (!runtime.storage || !runtime.storage.config.recallEnabled) {
           return { found: false, summary: '未找到足够可靠的记忆。记忆检索未启用。', evidenceEventIds: [] }
         }
-        const recall = new MemoryRecallService(runtime.storage)
-        const result = recall.search(query, {
+        const recall = new SqliteMemoryReader(runtime.storage)
+        const result = recall.search(query, runtime.storage.config.scopeId, {
           maxResults: typeof input.maxResults === 'number' ? input.maxResults : 5,
           maxChars: typeof input.maxChars === 'number' ? input.maxChars : 2000,
         })

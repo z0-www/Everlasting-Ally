@@ -74,7 +74,7 @@ export class HostAdapter {
   private started = false
   private readonly diagnosticsState: HostDiagnostics
 
-  constructor(private readonly root: HostRoot, hostVersion = root.version ?? null) {
+  constructor(private readonly root: HostRoot, hostVersion: string | null = null) {
     this.diagnosticsState = {
       hostVersion,
       apiVersion: 'unverified',
@@ -102,6 +102,9 @@ export class HostAdapter {
     this.started = true
     this.diagnosticsState.state = 'running'
     try {
+      if (typeof this.root.effect === 'function') {
+        this.root.effect(() => () => this.stop(), 'everlasting-ally: runtime')
+      }
       startup?.()
     } catch (error) {
       this.diagnosticsState.errors.push(errorText(error))
@@ -125,6 +128,7 @@ export class HostAdapter {
     label: string,
   ): void {
     const guardedSetup = () => {
+      if (this.stopped) return
       const cleanup = setup()
       if (typeof cleanup !== 'function') return
       const guarded = once(cleanup)
@@ -160,8 +164,14 @@ export class HostAdapter {
       return { supported: false, cleanupRegistered: false, reason: 'Host event API is unavailable' }
     }
     try {
-      const disposer = this.root.on(event, listener)
-      if (typeof disposer === 'function') {
+      const rawDisposer = this.root.on(event, (...args) => {
+        if (this.stopped) return
+        try { listener(...args) }
+        catch (error) { this.diagnosticsState.errors.push(errorText(error)) }
+      })
+      const disposer = typeof rawDisposer === 'function' ? once(rawDisposer) : undefined
+      if (disposer) {
+        this.registerCleanup(disposer)
         if (typeof this.root.effect === 'function') {
           this.registerHostEffect(this.root.effect.bind(this.root), () => disposer, `everlasting-ally: event ${event}`)
         } else {
@@ -180,11 +190,28 @@ export class HostAdapter {
   injectTools(callback: (context: ToolRegistrationContext) => void): void {
     if (this.stopped) throw new Error('HostAdapter has already stopped')
     try {
-      this.root.inject(['tools'], (context) => callback({
-        tools: context.tools,
-        effect: (setup, label = 'everlasting-ally: tool effect') =>
-          this.registerHostEffect(context.effect.bind(context), setup, label),
-      }))
+      if (typeof this.root.inject !== 'function') throw new Error('Host inject API is required')
+      this.root.inject(['tools'], (context) => {
+        if (this.stopped) return
+        try {
+          if (typeof context.tools?.register !== 'function' || typeof context.effect !== 'function') {
+            throw new Error('Host tools.register and injected effect are required')
+          }
+          callback({
+            tools: { register: (definition) => {
+              const cleanup = once(context.tools.register(definition))
+              this.registerCleanup(cleanup)
+              return cleanup
+            } },
+            effect: (setup, label = 'everlasting-ally: tool effect') =>
+              this.registerHostEffect(context.effect.bind(context), setup, label),
+          })
+        } catch (error) {
+          this.diagnosticsState.errors.push(errorText(error))
+          this.stop()
+          throw error
+        }
+      })
     } catch (error) {
       this.diagnosticsState.errors.push(errorText(error))
       this.diagnosticsState.state = 'failed'

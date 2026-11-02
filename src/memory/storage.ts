@@ -100,12 +100,18 @@ export class MemoryStorage {
     if (!config.enabled) return
     mkdirSync(dirname(config.databasePath), { recursive: true })
     const db = new DatabaseSync(config.databasePath)
+    try {
     initializeSchema(db)
     this.db = db
     if (config.retentionDays > 0) {
       const cutoff = new Date(Date.now() - config.retentionDays * 86400000).toISOString()
       db.prepare('DELETE FROM memory_orbs WHERE timestamp < ?').run(cutoff)
       db.prepare('DELETE FROM memory_events WHERE timestamp < ?').run(cutoff)
+    }
+    } catch (error) {
+      this.db = null
+      db.close()
+      throw error
     }
   }
   get available(): boolean { return this.db !== null && this.lastError === null }
